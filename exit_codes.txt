@@ -1,0 +1,4 @@
+1 - SDL initialization error
+2 - openGL context creation error
+3 - glew initialization error
+4 - App initialization error

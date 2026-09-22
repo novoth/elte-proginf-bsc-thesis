@@ -1,0 +1,8 @@
+/.vs
+/WindowApp
+/x64
+
+*.vcxproj.user
+*.vcxproj.filters
+
+/imgui.ini
