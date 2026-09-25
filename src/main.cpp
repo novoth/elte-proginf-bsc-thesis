@@ -91,7 +91,66 @@ int main( int argc, char* args[] ) {
 		bool show_imgui = true;
 
 		while ( !should_quit ) {
-			//TODO: event polling
+			#pragma region event handling
+			SDL_Event event;
+			while ( SDL_PollEvent( &event ) ) {
+				ImGui_ImplSDL3_ProcessEvent( &event );
+				bool gui_mouse_captured = ImGui::GetIO().WantCaptureMouse;
+				bool gui_keyboard_captured = ImGui::GetIO().WantCaptureKeyboard;
+				
+				switch ( event.type ) {
+					case SDL_EVENT_QUIT:
+						should_quit = true;
+						break;
+
+					case SDL_EVENT_KEY_DOWN:
+						if ( !gui_keyboard_captured ) {
+							app.keyboard_down( event.key );
+						}
+						break;
+
+					case SDL_EVENT_KEY_UP:
+						if ( !gui_keyboard_captured ) {
+							app.keyboard_up( event.key );
+						}
+						break;
+
+					case SDL_EVENT_MOUSE_BUTTON_DOWN:
+						if ( !gui_mouse_captured ) {
+							app.mouse_down( event.button );
+						}
+						break;
+
+					case SDL_EVENT_MOUSE_BUTTON_UP:
+						if ( !gui_mouse_captured ) {
+							app.mouse_up( event.button );
+						}
+						break;
+
+					case SDL_EVENT_MOUSE_WHEEL:
+						if ( !gui_mouse_captured ) {
+							app.mouse_scroll( event.wheel );
+						}
+						break;
+
+					case SDL_EVENT_MOUSE_MOTION:
+						if ( !gui_mouse_captured ) {
+							app.mouse_move( event.motion );
+						}
+						break;
+
+					case SDL_EVENT_WINDOW_RESIZED:
+					case SDL_EVENT_WINDOW_SHOWN:
+						int width, height;
+						SDL_GetWindowSize( window, &width, &height );
+						app.resize( width, height );
+						break;
+					
+					default:
+						app.other_event( event );
+				}
+			}
+			#pragma endregion
 
 			static Uint64 last_tick = SDL_GetTicks();
 			Uint64 current_tick = SDL_GetTicks();
