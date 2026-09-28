@@ -19,14 +19,20 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="src\util\Camera.cpp" />
     <ClCompile Include="src\App.cpp" />
     <ClCompile Include="src\main.cpp" />
+    <ClCompile Include="src\util\SDL_GLDebugMessageCallback.cpp" />
+    <ClCompile Include="src\util\U_ogl.cpp" />
   </ItemGroup>
   <ItemGroup>
     <Text Include="exit_codes.txt" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="src\util\Camera.h" />
     <ClInclude Include="src\App.h" />
+    <ClInclude Include="src\util\SDL_GLDebugMessageCallback.h" />
+    <ClInclude Include="src\util\U_ogl.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>18.0</VCProjectVersion>

@@ -155,6 +155,7 @@ int main( int argc, char* args[] ) {
 			static Uint64 last_tick = SDL_GetTicks();
 			Uint64 current_tick = SDL_GetTicks();
 			float dt = static_cast<float>(current_tick - last_tick) / 1000.0f;
+			last_tick = current_tick;
 
 			app.update( dt );
 			app.render();
@@ -170,6 +171,7 @@ int main( int argc, char* args[] ) {
 
 			ImGui_ImplOpenGL3_RenderDrawData( ImGui::GetDrawData() );
 			SDL_GL_SwapWindow( window );
+
 		}
 
 		app.clean();

@@ -8,6 +8,11 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
+#include "util/U_ogl.h"
+#include "util/SDL_GLDebugMessageCallback.h"
+
+#include "util/Camera.h"
+
 class App
 {
 public:
@@ -37,4 +42,17 @@ public:
 
 protected:
 	void init_debug_callback();
+
+	void init_shaders();
+	void clean_shaders();
+
+	Camera camera;
+
+	#pragma region tick
+	void tick();
+	float tick_rate = 1.f;
+	float tick_dt = .1f;
+	float tick_accum = 0.f;
+	float tick_time = 0.f;
+	#pragma endregion
 };
