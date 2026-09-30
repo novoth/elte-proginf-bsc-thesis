@@ -1,9 +1,14 @@
 #include "Camera.h"
 
-#include <iostream>
-
 Camera::Camera() {
 	set_view( glm::vec3( 0.f, 0.f, 0.f ), glm::vec3( 0.f, 1.f, 0.f ), glm::vec3( 0.f, 0.f, -1.f ) );
+	
+	fov_y = glm::radians( 27.0f );
+	aspect = 1.0f;
+	z_near = 0.01f;
+	z_far = 1000.0f;
+
+	set_proj( fov_y, aspect, z_near, z_far );
 }
 
 Camera::~Camera() {
@@ -48,10 +53,6 @@ void Camera::set_proj( float fov_y, float aspect, float z_near, float z_far ) {
 	this->z_far = z_far;
 
 	proj_mtx = glm::perspective( fov_y, aspect, z_near, z_far );
-}
-
-void Camera::set_sens( float sens ) {
-	this->sens = sens;
 }
 
 void Camera::update( float dt ) {
@@ -112,14 +113,19 @@ void Camera::keyboard_up( const SDL_KeyboardEvent& event ) {
 }
 
 void Camera::mouse_move( const SDL_MouseMotionEvent& event ) {
-	if ( event.state & SDL_BUTTON_LMASK ) {
+	if ( event.state & SDL_BUTTON_MMASK ) {
 		u += event.xrel / sens;
 		v += event.yrel / sens;
-	} else if ( event.state & SDL_BUTTON_RMASK ) {
-		dist *= pow( .9f, event.yrel / sens );
+
+		float padding = 0.001f;
+		if ( v < padding ) {
+			v = padding;
+		} else if ( v > 3.1415926535f - padding ) {
+			v = 3.1415926535f - padding;
+		}
 	}
 }
 
 void Camera::mouse_scroll( const SDL_MouseWheelEvent& event ) {
-	dist *= pow( .9f, event.y / sens );
+	dist *= pow( .9f, event.y );
 }

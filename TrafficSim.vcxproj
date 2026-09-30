@@ -34,12 +34,17 @@
     <ClInclude Include="src\util\SDL_GLDebugMessageCallback.h" />
     <ClInclude Include="src\util\U_ogl.h" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="shader\test.frag" />
+    <None Include="shader\test.vert" />
+  </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>18.0</VCProjectVersion>
     <Keyword>Win32Proj</Keyword>
     <ProjectGuid>{5e422c76-187e-4d04-9969-93acadaf75b7}</ProjectGuid>
     <RootNamespace>WindowApp</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+    <ProjectName>TrafficSim</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">

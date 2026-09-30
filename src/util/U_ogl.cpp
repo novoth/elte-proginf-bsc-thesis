@@ -47,6 +47,7 @@ GLuint attach_shader( const GLuint program_id, GLenum shader_type, const std::fi
 
 	return shader_id;
 }
+
 void link_program( const GLuint program_id ) {
 	glLinkProgram( program_id );
 
@@ -71,6 +72,7 @@ void link_program( const GLuint program_id ) {
 		glDeleteShader( shader );
 	}
 }
+
 OGL_obj create_obj_from_mesh( const Mesh& mesh ) {
 	OGL_obj gpu_obj = { 0 };
 
@@ -106,11 +108,22 @@ OGL_obj create_obj_from_mesh( const Mesh& mesh ) {
 
 	return gpu_obj;
 }
-void clean_OGL_obj( OGL_obj& ogl_obj ) {
+
+void clean_ogl_obj( OGL_obj& ogl_obj ) {
 	glDeleteBuffers( 1, &ogl_obj.ibo_id );
 	glDeleteBuffers( 1, &ogl_obj.vbo_id );
 	glDeleteBuffers( 1, &ogl_obj.vao_id );
 	ogl_obj.ibo_id = 0;
 	ogl_obj.vbo_id = 0;
 	ogl_obj.vao_id = 0;
+}
+
+GLint uniform_location(const GLchar* uniform_name) {
+	GLint prog;
+	glGetIntegerv( GL_CURRENT_PROGRAM, &prog );
+	if ( prog == 0 ) {
+		glDebugMessageInsert( GL_DEBUG_SOURCE_APPLICATION, GL_DEBUG_TYPE_ERROR, 0, GL_DEBUG_SEVERITY_HIGH, -1, "Trying to get uniform location, program was 0." );
+		return -1;
+	}
+	return glGetUniformLocation( prog, uniform_name );
 }

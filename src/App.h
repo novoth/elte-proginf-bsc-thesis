@@ -45,8 +45,9 @@ protected:
 
 	void init_shaders();
 	void clean_shaders();
-
-	Camera camera;
+	
+	void set_common_uniforms();
+	void draw_ogl_obj( OGL_obj ogl_obj, const glm::mat4& world_mtx );
 
 	#pragma region tick
 	void tick();
@@ -55,4 +56,9 @@ protected:
 	float tick_accum = 0.f;
 	float tick_time = 0.f;
 	#pragma endregion
+
+	Camera camera;
+
+	OGL_obj test = {};
+	GLuint test_shader = 0;
 };

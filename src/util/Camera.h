@@ -21,7 +21,6 @@ public:
 	inline float get_z_far() const { return z_far; }
 	inline float get_fov_y() const { return fov_y; }
 	inline float get_aspect() const { return aspect; }
-	inline float get_sens() const { return sens; }
 
 	void set_view( glm::vec3 pos, glm::vec3 world_up, glm::vec3 look_at );
 	void set_fov_y( float fov_y );
@@ -29,19 +28,16 @@ public:
 	void set_z_near( float z_near );
 	void set_z_far( float z_far );
 	void set_proj( float fov_y, float aspect, float z_near, float z_far );
-	void set_sens( float sens );
 	
-
 	void update( float dt );
-
-	inline float get_speed() const { return speed; }
-
-	inline void set_speed( float speed ) { this->speed = speed; }
 
 	void keyboard_down( const SDL_KeyboardEvent& event );
 	void keyboard_up( const SDL_KeyboardEvent& event );
 	void mouse_move( const SDL_MouseMotionEvent& event );
 	void mouse_scroll( const SDL_MouseWheelEvent& event );
+	
+	float sens = 100.f;
+	float speed = 10.f;
 private:
 	glm::vec3 pos;
 	glm::vec3 world_up;
@@ -60,12 +56,8 @@ private:
 	float u = 0.f;
 	float v = 0.f;
 	float dist = 0.f;
-	float speed = 10.f;
 
 	float go_fwd = 0.f;
 	float go_up = 0.f;
 	float go_right = 0.f;
-
-
-	float sens = 100.f;
 };

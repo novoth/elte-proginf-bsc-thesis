@@ -32,4 +32,5 @@ struct OGL_obj {
 GLuint attach_shader( const GLuint program_id, GLenum shader_type, const std::filesystem::path& file_name );
 void link_program( const GLuint program_id );
 OGL_obj create_obj_from_mesh( const Mesh& mesh );
-void clean_OGL_obj( OGL_obj& ogl_obj );
+void clean_ogl_obj( OGL_obj& ogl_obj );
+GLint uniform_location( const GLchar* uniform_name );
