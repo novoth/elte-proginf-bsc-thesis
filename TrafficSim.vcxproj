@@ -38,6 +38,9 @@
     <None Include="shader\test.frag" />
     <None Include="shader\test.vert" />
   </ItemGroup>
+  <ItemGroup>
+    <Image Include="asset\test.png" />
+  </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>18.0</VCProjectVersion>
     <Keyword>Win32Proj</Keyword>

@@ -1,9 +1,11 @@
 #include "Camera.h"
 
+#include <iostream>
+
 Camera::Camera() {
 	set_view( glm::vec3( 0.f, 0.f, 0.f ), glm::vec3( 0.f, 1.f, 0.f ), glm::vec3( 0.f, 0.f, -1.f ) );
 	
-	fov_y = glm::radians( 27.0f );
+	fov_y = glm::radians( 90.f );
 	aspect = 1.0f;
 	z_near = 0.01f;
 	z_far = 1000.0f;
@@ -12,7 +14,7 @@ Camera::Camera() {
 }
 
 Camera::~Camera() {
-
+	set_proj( this->fov_y, this->aspect, this->z_near, this->z_far );
 }
 
 void Camera::set_view( glm::vec3 pos, glm::vec3 world_up, glm::vec3 look_at ) {
@@ -64,6 +66,7 @@ void Camera::update( float dt ) {
 
 	glm::vec3 d_pos = ( forward * go_fwd + right * go_right + world_up * go_up ) * speed * dt;
 	new_pos += d_pos;
+	new_pos.y = glm::max( 0.2f, new_pos.y );
 	
 	set_view( new_pos, world_up, look_at + d_pos );
 }
@@ -89,6 +92,21 @@ void Camera::keyboard_down( const SDL_KeyboardEvent& event ) {
 		break;
 	case SDLK_Q:
 		go_up = -1.f;
+		break;
+
+	case SDLK_TAB:
+		if ( event.repeat ) { break; }
+
+		if ( v >= PI - 0.1f ) {
+			v = 2.f;
+		} else {
+			v = topdown_treshold;
+		}
+		break;
+
+	case SDLK_LSHIFT:
+		if ( event.repeat ) { break; }
+		u = glm::radians( -90.f );
 		break;
 	}
 }
@@ -117,15 +135,20 @@ void Camera::mouse_move( const SDL_MouseMotionEvent& event ) {
 		u += event.xrel / sens;
 		v += event.yrel / sens;
 
-		float padding = 0.001f;
 		if ( v < padding ) {
 			v = padding;
-		} else if ( v > 3.1415926535f - padding ) {
-			v = 3.1415926535f - padding;
+		} else if ( v > PI - padding ) {
+			v = PI - padding;
 		}
 	}
 }
 
 void Camera::mouse_scroll( const SDL_MouseWheelEvent& event ) {
 	dist *= pow( .9f, event.y );
+
+	if ( dist > 220 ) {
+		dist = 220;
+	} else if ( dist < 0.5f ) {
+		dist = 0.5f;
+	}
 }

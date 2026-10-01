@@ -127,3 +127,37 @@ GLint uniform_location(const GLchar* uniform_name) {
 	}
 	return glGetUniformLocation( prog, uniform_name );
 }
+
+GLsizei mip_level_count( const Img& img ) {
+	GLsizei target_lvl = 1;
+	unsigned int idx = std::max( img.width, img.height );
+	while ( idx >>= 1 ) {
+		++target_lvl;
+	}
+	return target_lvl;
+}
+
+Img load_img_from_file( const std::filesystem::path& file_name ) {
+	Img img;
+
+	std::unique_ptr<SDL_Surface, decltype( &SDL_DestroySurface )> loaded_img( IMG_Load( file_name.string().c_str() ), SDL_DestroySurface );
+	if ( !loaded_img ) {
+		SDL_LogMessage( SDL_LOG_CATEGORY_ERROR, SDL_LOG_PRIORITY_ERROR, "Error occured when loading file: %s", file_name.string().c_str() );
+		return img;
+	}
+
+	SDL_PixelFormat format = SDL_PIXELFORMAT_RGBA8888;
+#if SDL_BYTEORDER == SDL_LIL_ENDIAN
+	format = SDL_PIXELFORMAT_ABGR8888;
+#endif
+
+	std::unique_ptr<SDL_Surface, decltype( &SDL_DestroySurface )> formatted_surface( SDL_ConvertSurface( loaded_img.get(), format ), SDL_DestroySurface );
+	if ( !formatted_surface ) {
+		SDL_LogMessage( SDL_LOG_CATEGORY_ERROR, SDL_LOG_PRIORITY_ERROR, "Error occured when formatting image" );
+		return img;
+	}
+
+	img.assign( reinterpret_cast<glm::uint32*>( formatted_surface->pixels ), formatted_surface->w, formatted_surface->h );
+
+	return img;
+}

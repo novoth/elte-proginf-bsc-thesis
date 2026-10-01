@@ -21,6 +21,7 @@ public:
 	inline float get_z_far() const { return z_far; }
 	inline float get_fov_y() const { return fov_y; }
 	inline float get_aspect() const { return aspect; }
+	inline float get_dist() const { return dist; }
 
 	void set_view( glm::vec3 pos, glm::vec3 world_up, glm::vec3 look_at );
 	void set_fov_y( float fov_y );
@@ -37,7 +38,7 @@ public:
 	void mouse_scroll( const SDL_MouseWheelEvent& event );
 	
 	float sens = 100.f;
-	float speed = 10.f;
+	float speed = 2.f;
 private:
 	glm::vec3 pos;
 	glm::vec3 world_up;
@@ -46,7 +47,6 @@ private:
 	float z_near = 0.01f;
 	float z_far = 1000.0f;
 
-	float fov_y = glm::radians( 27.0f );
 	float aspect = 1.0f;
 
 	glm::mat4 view_mtx;
@@ -56,8 +56,13 @@ private:
 	float u = 0.f;
 	float v = 0.f;
 	float dist = 0.f;
+	float fov_y = glm::radians( 90.f );
 
 	float go_fwd = 0.f;
 	float go_up = 0.f;
 	float go_right = 0.f;
+
+	const float PI = 3.1415926535f;
+	const float padding = 0.001f;
+	const float topdown_treshold = PI - padding;
 };
