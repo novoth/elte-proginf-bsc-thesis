@@ -86,5 +86,9 @@ protected:
 
 	GLuint pixel_2d_sampler_id = 0;
 	GLuint test_texture_id = 0;
+	GLuint marker_texture_id = 0;
 
+	int win_width = 0;
+	int win_height = 0;
+	glm::vec2 mouse_pos = glm::vec2( 0.f );
 };

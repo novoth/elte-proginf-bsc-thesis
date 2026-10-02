@@ -64,11 +64,14 @@ void Camera::update( float dt ) {
 	glm::vec3 right = glm::normalize( glm::cross( new_look_dir, world_up ) );
 	glm::vec3 forward = glm::cross( world_up, right );
 
-	glm::vec3 d_pos = ( forward * go_fwd + right * go_right + world_up * go_up ) * speed * dt;
+	glm::vec3 d_pos = ( forward * go_fwd + right * go_right + world_up * go_up ) * speed * dt * dist;
 	new_pos += d_pos;
 	new_pos.y = glm::max( 0.2f, new_pos.y );
+
+	glm::vec3 new_look_at = look_at + d_pos;
+	new_look_at.y = glm::max( 0.2f, new_look_at.y );
 	
-	set_view( new_pos, world_up, look_at + d_pos );
+	set_view( new_pos, world_up, new_look_at );
 }
 
 void Camera::keyboard_down( const SDL_KeyboardEvent& event ) {

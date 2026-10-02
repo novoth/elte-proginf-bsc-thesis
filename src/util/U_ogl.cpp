@@ -161,3 +161,15 @@ Img load_img_from_file( const std::filesystem::path& file_name ) {
 
 	return img;
 }
+
+char orientation_char_from_camera_u( const float camera_u ) {
+	int i = glm::round( glm::degrees( camera_u ) / 90.f ) + 2.f;
+
+	switch ( i ) {
+	case 0:
+	case 4: return 'W';
+	case 1: return 'N';
+	case 2: return 'E';
+	case 3: return 'S';
+	}
+}

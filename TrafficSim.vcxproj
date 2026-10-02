@@ -39,6 +39,7 @@
     <None Include="shader\test.vert" />
   </ItemGroup>
   <ItemGroup>
+    <Image Include="asset\marker.png" />
     <Image Include="asset\test.png" />
   </ItemGroup>
   <PropertyGroup Label="Globals">

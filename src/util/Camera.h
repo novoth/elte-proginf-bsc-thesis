@@ -38,7 +38,10 @@ public:
 	void mouse_scroll( const SDL_MouseWheelEvent& event );
 	
 	float sens = 100.f;
-	float speed = 2.f;
+	float speed = 1.f;
+
+	float u = 0.f;
+	float v = 0.f;
 private:
 	glm::vec3 pos;
 	glm::vec3 world_up;
@@ -52,9 +55,6 @@ private:
 	glm::mat4 view_mtx;
 	glm::mat4 proj_mtx;
 
-
-	float u = 0.f;
-	float v = 0.f;
 	float dist = 0.f;
 	float fov_y = glm::radians( 90.f );
 

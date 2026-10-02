@@ -43,6 +43,12 @@ void App::init_textures() {
 	glTextureStorage2D( test_texture_id, mip_level_count( test_img ), GL_RGBA8, test_img.width, test_img.height );
 	glTextureSubImage2D( test_texture_id, 0, 0, 0, test_img.width, test_img.height, GL_RGBA, GL_UNSIGNED_BYTE, test_img.data() );
 	glGenerateTextureMipmap( test_texture_id );
+
+	Img marker_img = load_img_from_file( "asset/marker.png" );
+	glCreateTextures( GL_TEXTURE_2D, 1, &marker_texture_id );
+	glTextureStorage2D( marker_texture_id, mip_level_count( marker_img ), GL_RGBA8, marker_img.width, marker_img.height );
+	glTextureSubImage2D( marker_texture_id, 0, 0, 0, marker_img.width, marker_img.height, GL_RGBA, GL_UNSIGNED_BYTE, marker_img.data() );
+	glGenerateTextureMipmap( marker_texture_id );
 }
 
 void App::init_geometry() {
@@ -64,7 +70,7 @@ void App::init_geometry() {
 		std::vector<Vertex>{
 			{ glm::vec3( 0.f, 0.f, 0.f ), glm::vec3( 0.f, 1.f, 0.f ), glm::vec2( 0.f, 0.f ) },
 			{ glm::vec3( 0.f, 0.f, 1.f ), glm::vec3( 0.f, 1.f, 0.f ), glm::vec2( 0.f, 0.f ) },
-			{ glm::vec3( 1.f, 0.f, 0.f ), glm::vec3( 0.f, 1.f, 0.f ), glm::vec2( 0.f, 0.f ) },
+			{ glm::vec3( 10.f, 0.f, 0.f ), glm::vec3( 0.f, 1.f, 0.f ), glm::vec2( 0.f, 0.f ) },
 			{ glm::vec3( 1.f, 0.f, 2.f ), glm::vec3( 0.f, 1.f, 0.f ), glm::vec2( 0.f, 0.f ) },
 		},
 		std::vector<GLuint>{
@@ -80,7 +86,7 @@ bool App::init() {
 
 	camera.set_view( glm::vec3( 0.f, 5.f, 2.f ), glm::vec3( 0.f, 1.f, 0.f ), glm::vec3( 0.f, 0.f, 0.f ) );
 
-	glClearColor( 0.3f, 0.3f, 0.3f, 1.0f );
+	glClearColor( 0.627f, 0.835f, 0.922f, 1.0f );
 
 	glEnable( GL_CULL_FACE );
 	glCullFace( GL_BACK );
@@ -147,12 +153,9 @@ void App::draw_ogl_obj(OGL_obj ogl_obj, const glm::mat4& world_mtx ) {
 
 void App::render_ground() {
 	glUseProgram( test_shader );
-	glBindSampler( 0, pixel_2d_sampler_id );
 
 	set_common_uniforms();
 
-	glBindTextureUnit( 0, test_texture_id );
-	glUniform1i( uniform_location( "test_texture" ), 0 );
 	glUniform1i( uniform_location( "state" ), -1 );
 
 	glm::vec3 ground_quad_transform = camera.get_look_at();
@@ -195,13 +198,15 @@ void App::render() {
 void App::render_gui() {
 	//ImGui::ShowStyleEditor();
 
-	if ( ImGui::Begin( "settings" ) ) {
-		ImGui::SliderFloat( "tick rate", &tick_rate, 0.f, 10.f, "%.1f" );
-		ImGui::SliderFloat( "sensitivity", &( camera.sens ), 10.f, 200.f, "%.0f" );
-		ImGui::SliderFloat( "camera speed", &( camera.speed ), 0.1f, 5.f, "%.1f" );
+	if ( ImGui::Begin( "Info" ) ) {
+		ImGui::Text( "FPS: %.1f", ImGui::GetIO().Framerate );
+		ImGui::Text( "Facing: %c", orientation_char_from_camera_u( camera.u ) );
+		ImGui::Text( "Mouse pos: %.0f , %.0f", mouse_pos.x, mouse_pos.y );
+
+		ImGui::Separator();
 
 		float camera_fov_deg = glm::degrees( camera.get_fov_y() );
-		if ( ImGui::SliderFloat( "camera fov y", &camera_fov_deg, 30.f, 150.f, "%.1f" ) ) {
+		if ( ImGui::SliderFloat( "FOV", &camera_fov_deg, 10.f, 150.f, "%.0f" ) ) {
 			camera.set_fov_y( glm::radians( camera_fov_deg ) );
 		}
 	}
@@ -232,12 +237,17 @@ void App::mouse_scroll( const SDL_MouseWheelEvent& event ) {
 }
 
 void App::mouse_move( const SDL_MouseMotionEvent& event ) {
+	mouse_pos.x = event.x;
+	mouse_pos.y = event.y;
+
 	camera.mouse_move( event );
 }
 
 void App::resize( int width, int height ) {
-	glViewport( 0, 0, width, height );
+	win_width = width;
+	win_height = height;
 
+	glViewport( 0, 0, width, height );
 	camera.set_aspect( (float)width / height );
 }
 

@@ -54,3 +54,4 @@ void clean_ogl_obj( OGL_obj& ogl_obj );
 GLint uniform_location( const GLchar* uniform_name );
 GLsizei mip_level_count( const Img& img );
 Img load_img_from_file( const std::filesystem::path& file_name );
+char orientation_char_from_camera_u( const float camera_u );
