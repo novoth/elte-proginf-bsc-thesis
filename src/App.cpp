@@ -3,7 +3,7 @@
 #include <imgui.h>
 
 App::App() {
-
+	camera = new Camera( this );
 }
 
 App::~App() {
@@ -29,6 +29,10 @@ void App::init_shaders() {
 	attach_shader(test_shader, GL_FRAGMENT_SHADER, "shader/test.frag");
 	link_program(test_shader);
 
+	non_lit_ground_sdr_with_local_texturing = glCreateProgram();
+	attach_shader(non_lit_ground_sdr_with_local_texturing, GL_VERTEX_SHADER, "shader/non_lit_ground_sdr_with_local_textures.vert");
+	attach_shader(non_lit_ground_sdr_with_local_texturing, GL_FRAGMENT_SHADER, "shader/non_lit_ground_sdr_with_local_textures.frag");
+	link_program(non_lit_ground_sdr_with_local_texturing);
 }
 
 void App::init_textures() {
@@ -79,12 +83,26 @@ void App::init_geometry() {
 		}
 	};
 	test = create_obj_from_mesh( test_gpu );
+
+	Mesh marker_gpu = {
+		std::vector<Vertex>{
+			{ glm::vec3( 0.f, 0.f, 0.f ), glm::vec3( 0.f, 1.f, 0.f ), glm::vec2( 0.f, 0.f ) },
+			{ glm::vec3( 0.f, 0.f, 1.f ), glm::vec3( 0.f, 1.f, 0.f ), glm::vec2( 0.f, 1.f ) },
+			{ glm::vec3( 1.f, 0.f, 0.f ), glm::vec3( 0.f, 1.f, 0.f ), glm::vec2( 1.f, 0.f ) },
+			{ glm::vec3( 1.f, 0.f, 1.f ), glm::vec3( 0.f, 1.f, 0.f ), glm::vec2( 1.f, 1.f ) },
+	},
+		std::vector<GLuint>{
+			0, 1, 2,
+			2, 1, 3,
+	}
+	};
+	marker = create_obj_from_mesh( marker_gpu );
 }
 
 bool App::init() {
 	init_debug_callback();
 
-	camera.set_view( glm::vec3( 0.f, 5.f, 2.f ), glm::vec3( 0.f, 1.f, 0.f ), glm::vec3( 0.f, 0.f, 0.f ) );
+	camera->set_view( glm::vec3( 0.f, 5.f, 2.f ), glm::vec3( 0.f, 1.f, 0.f ), glm::vec3( 0.f, 0.f, 0.f ) );
 
 	glClearColor( 0.627f, 0.835f, 0.922f, 1.0f );
 
@@ -135,12 +153,12 @@ void App::update( const float dt ) {
 		tick_accum -= tick_dt;
 	}
 
-	camera.update( dt );
+	camera->update( dt );
 }
 
 #pragma region rendering
 void App::set_common_uniforms() {
-	glm::mat4 view_proj_mtx = camera.get_view_proj_mtx();
+	glm::mat4 view_proj_mtx = camera->get_view_proj_mtx();
 	glUniformMatrix4fv( uniform_location( "view_proj" ), 1, GL_FALSE, glm::value_ptr( view_proj_mtx ) );
 }
 
@@ -151,6 +169,20 @@ void App::draw_ogl_obj(OGL_obj ogl_obj, const glm::mat4& world_mtx ) {
 	glDrawElements( GL_TRIANGLES, ogl_obj.count, GL_UNSIGNED_INT, nullptr );
 }
 
+void App::render_latest_marker() {
+	//	if (!camera->topdown) { return; }
+
+	glUseProgram( non_lit_ground_sdr_with_local_texturing );
+	glBindSampler( 0, pixel_2d_sampler_id );
+
+	set_common_uniforms();
+
+	glBindTextureUnit( 0, marker_texture_id );
+	glUniform1i( uniform_location( "used_texture" ), 0 );
+
+	draw_ogl_obj( marker, glm::translate( glm::mat4( 1.f ), last_ground_intersection + glm::vec3( -.5f, 0.f, -.5f ) ) );
+}
+
 void App::render_ground() {
 	glUseProgram( test_shader );
 
@@ -158,7 +190,7 @@ void App::render_ground() {
 
 	glUniform1i( uniform_location( "state" ), -1 );
 
-	glm::vec3 ground_quad_transform = camera.get_look_at();
+	glm::vec3 ground_quad_transform = camera->get_look_at();
 	ground_quad_transform.y = 0.f;
 	ground_quad_transform += glm::vec3( -.5f, 0, -.5f ) * ground_size;
 	draw_ogl_obj( ground, glm::scale( glm::translate( glm::mat4( 1.f ), ground_quad_transform ), glm::vec3( 1.f, 1.f, 1.f) * ground_size ) );
@@ -185,6 +217,7 @@ void App::render() {
 
 	render_ground();
 	render_test();
+	render_latest_marker();
 	
 	glEnable( GL_DEPTH_TEST );
 	#pragma endregion
@@ -200,14 +233,14 @@ void App::render_gui() {
 
 	if ( ImGui::Begin( "Info" ) ) {
 		ImGui::Text( "FPS: %.1f", ImGui::GetIO().Framerate );
-		ImGui::Text( "Facing: %c", orientation_char_from_camera_u( camera.u ) );
+		ImGui::Text( "Facing: %c", orientation_char_from_camera_u( camera->u ) );
 		ImGui::Text( "Mouse pos: %.0f , %.0f", mouse_pos.x, mouse_pos.y );
 
 		ImGui::Separator();
 
-		float camera_fov_deg = glm::degrees( camera.get_fov_y() );
+		float camera_fov_deg = glm::degrees( camera->get_fov_y() );
 		if ( ImGui::SliderFloat( "FOV", &camera_fov_deg, 10.f, 150.f, "%.0f" ) ) {
-			camera.set_fov_y( glm::radians( camera_fov_deg ) );
+			camera->set_fov_y( glm::radians( camera_fov_deg ) );
 		}
 	}
 
@@ -217,15 +250,19 @@ void App::render_gui() {
 
 #pragma region event handling
 void App::keyboard_down( const SDL_KeyboardEvent& event ) {
-	camera.keyboard_down( event );
+	camera->keyboard_down( event );
 }
 
 void App::keyboard_up( const SDL_KeyboardEvent& event ) {
-	camera.keyboard_up( event );
+	camera->keyboard_up( event );
 }
 
 void App::mouse_down( const SDL_MouseButtonEvent& event ) {
-	
+	if ( event.button == SDL_BUTTON_LMASK ) {
+		if ( ray_hit_ground_plane( camera->get_ray_through_pixel( mouse_pos, window_size ), mouse_ground_intersection ) ) {
+			last_ground_intersection = mouse_ground_intersection;
+		}
+	}
 }
 
 void App::mouse_up( const SDL_MouseButtonEvent& event ) {
@@ -233,22 +270,21 @@ void App::mouse_up( const SDL_MouseButtonEvent& event ) {
 }
 
 void App::mouse_scroll( const SDL_MouseWheelEvent& event ) {
-	camera.mouse_scroll( event );
+	camera->mouse_scroll( event );
 }
 
 void App::mouse_move( const SDL_MouseMotionEvent& event ) {
 	mouse_pos.x = event.x;
 	mouse_pos.y = event.y;
 
-	camera.mouse_move( event );
+	camera->mouse_move( event );
 }
 
 void App::resize( int width, int height ) {
-	win_width = width;
-	win_height = height;
+	window_size = glm::vec2( width, height );
 
 	glViewport( 0, 0, width, height );
-	camera.set_aspect( (float)width / height );
+	camera->set_aspect( (float)width / height );
 }
 
 void App::other_event( const SDL_Event& event ) {

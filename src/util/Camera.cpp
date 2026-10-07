@@ -1,8 +1,11 @@
 #include "Camera.h"
 
 #include <iostream>
+#include "../App.h"
 
-Camera::Camera() {
+Camera::Camera( App *app ) {
+	this->app = app;
+
 	set_view( glm::vec3( 0.f, 0.f, 0.f ), glm::vec3( 0.f, 1.f, 0.f ), glm::vec3( 0.f, 0.f, -1.f ) );
 	
 	fov_y = glm::radians( 90.f );
@@ -72,6 +75,8 @@ void Camera::update( float dt ) {
 	new_look_at.y = glm::max( 0.2f, new_look_at.y );
 	
 	set_view( new_pos, world_up, new_look_at );
+
+	topdown = v >= PI - 0.1f;
 }
 
 void Camera::keyboard_down( const SDL_KeyboardEvent& event ) {
@@ -100,7 +105,7 @@ void Camera::keyboard_down( const SDL_KeyboardEvent& event ) {
 	case SDLK_TAB:
 		if ( event.repeat ) { break; }
 
-		if ( v >= PI - 0.1f ) {
+		if ( topdown ) {
 			v = 2.f;
 		} else {
 			v = topdown_treshold;
@@ -134,7 +139,7 @@ void Camera::keyboard_up( const SDL_KeyboardEvent& event ) {
 }
 
 void Camera::mouse_move( const SDL_MouseMotionEvent& event ) {
-	if ( event.state & SDL_BUTTON_MMASK ) {
+	if ( event.state & SDL_BUTTON_MMASK || event.state & SDL_BUTTON_RMASK ) {
 		u += event.xrel / sens;
 		v += event.yrel / sens;
 
@@ -147,11 +152,48 @@ void Camera::mouse_move( const SDL_MouseMotionEvent& event ) {
 }
 
 void Camera::mouse_scroll( const SDL_MouseWheelEvent& event ) {
-	dist *= pow( .9f, event.y );
+	if ( dist > 0.6f && dist < 219.9f ) {
+		glm::vec3 before_zoom_position;
+		glm::vec3 after_zoom_position;
 
+		glm::vec2 mouse_pos = app->get_mouse_pos();
+		glm::vec2 window_size = app->get_window_size();
+
+		ray_hit_ground_plane( get_ray_through_pixel( mouse_pos, window_size ), before_zoom_position );
+
+		dist *= pow( .9f, event.y );
+		glm::vec3 new_look_dir( cosf( u ) * sinf( v ), cosf( v ), sinf( u ) * sinf( v ) );
+		glm::vec3 new_pos = look_at - dist * new_look_dir;
+		new_pos.y = glm::max( 0.2f, new_pos.y );
+		set_view( new_pos, world_up, look_at );
+
+		ray_hit_ground_plane( get_ray_through_pixel( mouse_pos, window_size ), after_zoom_position );
+
+		glm::vec3 diff = ( before_zoom_position - after_zoom_position );
+		set_view( new_pos + diff, world_up, look_at + diff );
+	} else {
+		dist *= pow( .9f, event.y );
+	}
+	
 	if ( dist > 220 ) {
-		dist = 220;
+		dist = 220.f;
 	} else if ( dist < 0.5f ) {
 		dist = 0.5f;
 	}
+}
+
+Ray Camera::get_ray_through_pixel( const glm::vec2 mouse_pos, const glm::vec2 window_size ) {
+	glm::vec3 mouse_ndc( 
+		2.f * ( mouse_pos.x + .5f ) / window_size.x - 1.f,
+		1.f - 2.f * ( mouse_pos.y + .5f ) / window_size.y,
+		0.f
+	);
+
+	glm::vec4 world_pick = glm::inverse( get_view_proj_mtx() ) * glm::vec4( mouse_ndc, 1.f );
+	world_pick /= world_pick.w;
+	Ray ray;
+
+	ray.origin = pos;
+	ray.direction = glm::normalize( glm::vec3( world_pick ) - ray.origin );
+	return ray;
 }

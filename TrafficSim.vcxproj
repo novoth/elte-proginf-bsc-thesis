@@ -35,6 +35,8 @@
     <ClInclude Include="src\util\U_ogl.h" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="shader\non_lit_ground_sdr_with_local_textures.frag" />
+    <None Include="shader\non_lit_ground_sdr_with_local_textures.vert" />
     <None Include="shader\test.frag" />
     <None Include="shader\test.vert" />
   </ItemGroup>

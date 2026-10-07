@@ -5,10 +5,15 @@
 #include <math.h>
 #include <SDL3/SDL_events.h>
 
+#include "U_ogl.h"
+//#include "../App.h"
+
+class App;
+
 class Camera
 {
 public:
-	Camera();
+	Camera( App *app );
 	~Camera();
 
 	inline glm::vec3 get_pos() const { return pos; }
@@ -36,13 +41,19 @@ public:
 	void keyboard_up( const SDL_KeyboardEvent& event );
 	void mouse_move( const SDL_MouseMotionEvent& event );
 	void mouse_scroll( const SDL_MouseWheelEvent& event );
+
+	Ray get_ray_through_pixel( const glm::vec2 pixel, const glm::vec2 window_size );
 	
 	float sens = 100.f;
 	float speed = 1.f;
 
 	float u = 0.f;
 	float v = 0.f;
+
+	bool topdown = false;
 private:
+	App *app;
+
 	glm::vec3 pos;
 	glm::vec3 world_up;
 	glm::vec3 look_at;
@@ -63,6 +74,6 @@ private:
 	float go_right = 0.f;
 
 	const float PI = 3.1415926535f;
-	const float padding = 0.001f;
+	const float padding = 0.002f;
 	const float topdown_treshold = PI - padding;
 };

@@ -47,6 +47,16 @@ struct Img {
 	}
 };
 
+struct Ray {
+	glm::vec3 origin;
+	glm::vec3 direction;
+};
+
+struct Ray_intersection {
+	glm::vec2 uv;
+	float t;
+};
+
 GLuint attach_shader( const GLuint program_id, GLenum shader_type, const std::filesystem::path& file_name );
 void link_program( const GLuint program_id );
 OGL_obj create_obj_from_mesh( const Mesh& mesh );
@@ -55,3 +65,5 @@ GLint uniform_location( const GLchar* uniform_name );
 GLsizei mip_level_count( const Img& img );
 Img load_img_from_file( const std::filesystem::path& file_name );
 char orientation_char_from_camera_u( const float camera_u );
+bool ray_hit_plane( const Ray ray, const glm::vec3 plane_point, const glm::vec3 plane_u, const glm::vec3 plane_v, Ray_intersection& intersection );
+bool ray_hit_ground_plane( const Ray ray, glm::vec3& position );

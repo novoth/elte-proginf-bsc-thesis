@@ -24,6 +24,9 @@ public:
 	void clean();
 	#pragma endregion
 
+	inline glm::vec2 get_mouse_pos() { return mouse_pos; }
+	inline glm::vec2 get_window_size() { return window_size; }
+
 	void update( const float dt );
 
 	#pragma region rendering
@@ -65,6 +68,7 @@ protected:
 	void draw_ogl_obj( OGL_obj ogl_obj, const glm::mat4& world_mtx );
 	void render_ground();
 	void render_test();
+	void render_latest_marker();
 	#pragma endregion
 
 	#pragma region tick
@@ -78,17 +82,21 @@ protected:
 	float app_time = 0.f;
 	const float ground_size = 1000.f;
 
-	Camera camera;
+	Camera* camera;
 
+	OGL_obj marker = {};
 	OGL_obj test = {};
 	OGL_obj ground = {};
 	GLuint test_shader = 0;
+	GLuint non_lit_ground_sdr_with_local_texturing = 0;
 
 	GLuint pixel_2d_sampler_id = 0;
 	GLuint test_texture_id = 0;
 	GLuint marker_texture_id = 0;
 
-	int win_width = 0;
-	int win_height = 0;
+	glm::vec3 mouse_ground_intersection = glm::vec3( 0.f );
+	glm::vec3 last_ground_intersection = glm::vec3( 0.f );
+
+	glm::vec2 window_size = glm::vec2( 0.f );
 	glm::vec2 mouse_pos = glm::vec2( 0.f );
 };

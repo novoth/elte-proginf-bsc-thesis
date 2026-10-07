@@ -173,3 +173,35 @@ char orientation_char_from_camera_u( const float camera_u ) {
 	case 3: return 'S';
 	}
 }
+
+bool ray_hit_plane( const Ray ray, const glm::vec3 plane_point, const glm::vec3 plane_u, const glm::vec3 plane_v, Ray_intersection& intersection ) {
+	glm::mat3 a( -ray.direction, plane_u, plane_v );
+	glm::vec3 b( ray.origin - plane_point );
+
+	if ( fabsf( glm::determinant( a ) ) < 0.001f ) { return false; }
+	glm::vec3 x = glm::inverse( a ) * b;
+
+	intersection.t = x.x;
+	intersection.uv.x = x.y;
+	intersection.uv.y = x.z;
+
+	return x.x >= 0;
+}
+
+bool ray_hit_ground_plane( const Ray ray, glm::vec3& position ) {
+	glm::vec3 plane_point( 0.f, 0.f, 0.f );
+	glm::vec3 plane_u( 1.f, 0.f, 0.f );
+	glm::vec3 plane_v( 0.f, 0.f, 1.f );
+
+	Ray_intersection intersection;
+
+	bool result = ray_hit_plane( ray, plane_point, plane_u, plane_v, intersection );
+
+	if ( result ) {
+		position = plane_point + intersection.uv.x * plane_u + intersection.uv.y * plane_v;
+		return true;
+	} else {
+		position = plane_point + intersection.uv.x * plane_u + intersection.uv.y * plane_v;
+		return false;
+	}
+}
