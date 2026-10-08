@@ -57,13 +57,13 @@ int main( int argc, char* args[] ) {
 		return 3;
 	}
 
-	int gl_version[2] = { -1, -1 };
-	glGetIntegerv( GL_MAJOR_VERSION, &gl_version[0] );
-	glGetIntegerv( GL_MINOR_VERSION, &gl_version[1] );
+	int gl_version[ 2 ] = { -1, -1 };
+	glGetIntegerv( GL_MAJOR_VERSION, &gl_version[ 0 ] );
+	glGetIntegerv( GL_MINOR_VERSION, &gl_version[ 1 ] );
 
-	SDL_LogInfo( SDL_LOG_CATEGORY_APPLICATION, "Running application with openGL version %d.%d", gl_version[0], gl_version[1] );
+	SDL_LogInfo( SDL_LOG_CATEGORY_APPLICATION, "Running application with openGL version %d.%d", gl_version[ 0 ], gl_version[ 1 ] );
 
-	if ( gl_version[0] == -1 || gl_version[1] == -1 ) {
+	if ( gl_version[ 0 ] == -1 || gl_version[ 1 ] == -1 ) {
 		SDL_GL_DestroyContext( ogl_context );
 		SDL_DestroyWindow( window );
 		SDL_LogError( SDL_LOG_CATEGORY_ERROR, "Error occured during openGL context creation: could not get openGL version" );

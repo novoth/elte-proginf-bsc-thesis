@@ -6,7 +6,6 @@
 #include <SDL3/SDL_events.h>
 
 #include "U_ogl.h"
-//#include "../App.h"
 
 class App;
 
@@ -70,7 +69,6 @@ private:
 	float fov_y = glm::radians( 90.f );
 
 	float go_fwd = 0.f;
-	float go_up = 0.f;
 	float go_right = 0.f;
 
 	const float PI = 3.1415926535f;

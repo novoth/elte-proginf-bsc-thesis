@@ -14,6 +14,6 @@ void main() {
 	}
 
 	if ( state == -1 ) {
-		final_color = vec4( 0.941, 0.918, 0.839, 1.0 );
+		final_color = vec4( 0.682, 0.82, 0.541, 1.0 );
 	}
 }

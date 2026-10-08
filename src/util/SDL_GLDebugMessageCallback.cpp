@@ -146,7 +146,7 @@ void GLAPIENTRY SDL_GLDebugMessageCallback(GLenum source, GLenum type, GLuint id
     SDL_LogMessage(
         (severity != GL_DEBUG_SEVERITY_NOTIFICATION ? SDL_LOG_CATEGORY_ERROR : SDL_LOG_CATEGORY_APPLICATION),
         (severity != GL_DEBUG_SEVERITY_NOTIFICATION ? SDL_LOG_PRIORITY_ERROR : SDL_LOG_PRIORITY_INFO),
-        "OpenGL debug message [%d], type: %s, severity: %s, source: %s, message:\n%s\n\n",
+        "OpenGL debug message [ %d ], type: %s, severity: %s, source: %s, message:\n%s\n\n",
         id, _type, _severity, _source, msg);
     
 

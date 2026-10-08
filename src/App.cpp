@@ -25,14 +25,19 @@ void App::init_debug_callback() {
 
 void App::init_shaders() {
 	test_shader = glCreateProgram();
-	attach_shader(test_shader, GL_VERTEX_SHADER, "shader/test.vert");
-	attach_shader(test_shader, GL_FRAGMENT_SHADER, "shader/test.frag");
-	link_program(test_shader);
+	attach_shader( test_shader, GL_VERTEX_SHADER, "shader/test.vert" );
+	attach_shader( test_shader, GL_FRAGMENT_SHADER, "shader/test.frag" );
+	link_program( test_shader );
 
 	non_lit_ground_sdr_with_local_texturing = glCreateProgram();
-	attach_shader(non_lit_ground_sdr_with_local_texturing, GL_VERTEX_SHADER, "shader/non_lit_ground_sdr_with_local_textures.vert");
-	attach_shader(non_lit_ground_sdr_with_local_texturing, GL_FRAGMENT_SHADER, "shader/non_lit_ground_sdr_with_local_textures.frag");
-	link_program(non_lit_ground_sdr_with_local_texturing);
+	attach_shader( non_lit_ground_sdr_with_local_texturing, GL_VERTEX_SHADER, "shader/2d_road/non_lit_ground_sdr_with_local_textures.vert" );
+	attach_shader( non_lit_ground_sdr_with_local_texturing, GL_FRAGMENT_SHADER, "shader/2d_road/non_lit_ground_sdr_with_local_textures.frag" );
+	link_program( non_lit_ground_sdr_with_local_texturing );
+	
+	outline_shader = glCreateProgram();
+	attach_shader( outline_shader, GL_VERTEX_SHADER, "shader/2d_road/outline.vert" );
+	attach_shader( outline_shader, GL_FRAGMENT_SHADER, "shader/2d_road/outline.frag" );
+	link_program( outline_shader );
 }
 
 void App::init_textures() {
@@ -120,7 +125,9 @@ bool App::init() {
 
 #pragma region cleanup
 void App::clean_shaders() {
-
+	glDeleteProgram( test_shader );
+	glDeleteProgram( non_lit_ground_sdr_with_local_texturing );
+	glDeleteProgram( outline_shader );
 }
 
 void App::clean_textures() {
@@ -156,6 +163,31 @@ void App::update( const float dt ) {
 	camera->update( dt );
 }
 
+#pragma region utility
+int App::get_nearest_marker_id( const glm::vec2 nearest_to, const float max_sqr_radius ) {
+	float min_sqr_dist = max_sqr_radius;
+	int min_id = -1;
+
+	for ( int i = 0; i < markers.size(); ++i ) {
+		float x = markers[ i ].ground_pos.x + .5f - mouse_ground_intersection.x;
+		float y = markers[ i ].ground_pos.y + .5f - mouse_ground_intersection.y;
+
+		float sqr_dist = x * x + y * y;
+
+		if ( sqr_dist < min_sqr_dist ) {
+			min_id = i;
+			min_sqr_dist = sqr_dist;
+		}
+	}
+
+	return min_id;
+}
+
+bool App::load_mouse_ground_pos_into_vector() {
+	return ray_hit_ground_plane( camera->get_ray_through_pixel( mouse_pos, window_size ), mouse_ground_intersection );
+}
+#pragma endregion
+
 #pragma region rendering
 void App::set_common_uniforms() {
 	glm::mat4 view_proj_mtx = camera->get_view_proj_mtx();
@@ -166,21 +198,8 @@ void App::draw_ogl_obj(OGL_obj ogl_obj, const glm::mat4& world_mtx ) {
 	glUniformMatrix4fv( uniform_location( "world" ), 1, GL_FALSE, glm::value_ptr( world_mtx ) );
 	glUniformMatrix4fv( uniform_location( "world_i_t" ), 1, GL_FALSE, glm::value_ptr( glm::transpose( glm::inverse( world_mtx ) ) ) );
 	glBindVertexArray( ogl_obj.vao_id );
+	triangles_rendered += ogl_obj.count / 3;
 	glDrawElements( GL_TRIANGLES, ogl_obj.count, GL_UNSIGNED_INT, nullptr );
-}
-
-void App::render_latest_marker() {
-	//	if (!camera->topdown) { return; }
-
-	glUseProgram( non_lit_ground_sdr_with_local_texturing );
-	glBindSampler( 0, pixel_2d_sampler_id );
-
-	set_common_uniforms();
-
-	glBindTextureUnit( 0, marker_texture_id );
-	glUniform1i( uniform_location( "used_texture" ), 0 );
-
-	draw_ogl_obj( marker, glm::translate( glm::mat4( 1.f ), last_ground_intersection + glm::vec3( -.5f, 0.f, -.5f ) ) );
 }
 
 void App::render_ground() {
@@ -209,16 +228,63 @@ void App::render_test() {
 	draw_ogl_obj( test, glm::translate( glm::mat4( 1.f ), glm::vec3( 0.f, 0.f, 0.f) ) );
 }
 
+void App::render_all_markers() {
+	glUseProgram( non_lit_ground_sdr_with_local_texturing );
+	glBindSampler( 0, pixel_2d_sampler_id );
+
+	set_common_uniforms();
+
+	glBindTextureUnit( 0, marker_texture_id );
+	glUniform1i( uniform_location( "used_texture" ), 0 );
+
+	for ( int i = 0; i < markers.size(); ++i ) {
+		if ( i == selected_marker ) { continue; }
+		glm::mat4 current_marker_world_mtx(
+			glm::vec4( 1.f, 0.f, 0.f, 0.f ),
+			glm::vec4( 0.f, 1.f, 0.f, 0.f ),
+			glm::vec4( 0.f, 0.f, 1.f, 0.f ),
+			glm::vec4( markers[ i ].ground_pos.x, 0.f, markers[ i ].ground_pos.y, 1.f )
+		);
+
+		draw_ogl_obj( marker, current_marker_world_mtx );
+	}
+}
+
+void App::render_marker_outline() {
+	glUseProgram( outline_shader );
+	glBindSampler( 0, pixel_2d_sampler_id );
+
+	set_common_uniforms();
+
+	glBindTextureUnit( 0, marker_texture_id );
+	glUniform1i( uniform_location( "used_texture" ), 0 );
+
+	glm::mat4 outlined_world_mtx(
+		glm::vec4( 1.f, 0.f, 0.f, 0.f ),
+		glm::vec4( 0.f, 1.f, 0.f, 0.f ),
+		glm::vec4( 0.f, 0.f, 1.f, 0.f ),
+		glm::vec4( markers[ selected_marker ].ground_pos.x, 0.f, markers[ selected_marker ].ground_pos.y, 1.f )
+	);
+
+	draw_ogl_obj( marker, outlined_world_mtx );
+}
+
 void App::render() {
 	glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
+	triangles_rendered = 0;
 
 	#pragma region render 2d ground
 	glDisable( GL_DEPTH_TEST );
 
 	render_ground();
 	render_test();
-	render_latest_marker();
+
 	
+	render_all_markers();
+	if ( selected_marker != -1 ) {
+		render_marker_outline();
+	}
+
 	glEnable( GL_DEPTH_TEST );
 	#pragma endregion
 
@@ -233,8 +299,9 @@ void App::render_gui() {
 
 	if ( ImGui::Begin( "Info" ) ) {
 		ImGui::Text( "FPS: %.1f", ImGui::GetIO().Framerate );
+		ImGui::Text( "Triangles: %d", triangles_rendered );
 		ImGui::Text( "Facing: %c", orientation_char_from_camera_u( camera->u ) );
-		ImGui::Text( "Mouse pos: %.0f , %.0f", mouse_pos.x, mouse_pos.y );
+		//ImGui::Text( "Mouse pos: %.0f , %.0f; drag: %d", mouse_pos.x, mouse_pos.y, mouse_dragging );
 
 		ImGui::Separator();
 
@@ -242,6 +309,7 @@ void App::render_gui() {
 		if ( ImGui::SliderFloat( "FOV", &camera_fov_deg, 10.f, 150.f, "%.0f" ) ) {
 			camera->set_fov_y( glm::radians( camera_fov_deg ) );
 		}
+	
 	}
 
 	ImGui::End();
@@ -251,22 +319,81 @@ void App::render_gui() {
 #pragma region event handling
 void App::keyboard_down( const SDL_KeyboardEvent& event ) {
 	camera->keyboard_down( event );
+	if ( event.key == SDLK_LCTRL ) {
+		key_mod_set( key_modifier, Modifier::ctrl );
+	} else if ( event.key == SDLK_LALT ) {
+		key_mod_set( key_modifier, Modifier::alt );
+	} else if ( event.key == SDLK_LSHIFT ) {
+		key_mod_set( key_modifier, Modifier::shift );
+	} else if ( event.key == SDLK_F1 ) {
+		clean_shaders();
+		init_shaders();
+	}
 }
 
 void App::keyboard_up( const SDL_KeyboardEvent& event ) {
 	camera->keyboard_up( event );
+	if ( event.key == SDLK_LCTRL ) {
+		key_mod_remove( key_modifier, Modifier::ctrl );
+	} else if ( event.key == SDLK_LALT ) {
+		key_mod_remove( key_modifier, Modifier::alt );
+	} else if ( event.key == SDLK_LSHIFT ) {
+		key_mod_remove( key_modifier, Modifier::shift );
+	}
 }
 
 void App::mouse_down( const SDL_MouseButtonEvent& event ) {
-	if ( event.button == SDL_BUTTON_LMASK ) {
-		if ( ray_hit_ground_plane( camera->get_ray_through_pixel( mouse_pos, window_size ), mouse_ground_intersection ) ) {
-			last_ground_intersection = mouse_ground_intersection;
+	switch ( key_modifier ) {
+	case Modifier::none:
+		if ( event.button == SDL_BUTTON_LEFT ) {
+			if ( markers.size() == 0 ) { break; }
+			if ( load_mouse_ground_pos_into_vector() ) {
+				int min_id = get_nearest_marker_id( mouse_ground_intersection, .2f );
+
+				selected_marker = min_id;
+				mouse_drag_offset = mouse_ground_intersection - markers[ min_id ].ground_pos;
+				
+				if ( selected_marker != -1 ) {
+					mouse_dragging = true;
+				}
+			}
 		}
+		break;
+	case Modifier::ctrl:
+		if ( event.button == SDL_BUTTON_LEFT ) {
+			if ( load_mouse_ground_pos_into_vector() ) {
+				Marker new_marker;
+				new_marker.ground_pos = mouse_ground_intersection + glm::vec2( -.5f, -.5f );
+				new_marker.type = 0;
+
+				markers.push_back( new_marker );
+			}
+		}
+		else if ( event.button == SDL_BUTTON_RIGHT ) {
+			if ( load_mouse_ground_pos_into_vector() ) {
+				int min_id = get_nearest_marker_id( mouse_ground_intersection, .2f );
+
+				if ( min_id != -1 && min_id < markers.size() ) {
+					markers.erase( markers.begin() + min_id );
+				}
+				selected_marker = -1;
+			}
+		}
+		break;
+	case Modifier::ctrl_alt_shift:
+		if ( event.button == SDL_BUTTON_RIGHT ) {
+			markers.clear();
+			selected_marker = -1;
+		}
+		break;
 	}
 }
 
 void App::mouse_up( const SDL_MouseButtonEvent& event ) {
-
+	if ( mouse_dragging ) {
+		mouse_dragging = false;
+		selected_marker = -1;
+	}
 }
 
 void App::mouse_scroll( const SDL_MouseWheelEvent& event ) {
@@ -278,6 +405,15 @@ void App::mouse_move( const SDL_MouseMotionEvent& event ) {
 	mouse_pos.y = event.y;
 
 	camera->mouse_move( event );
+
+	if ( mouse_dragging ) {
+		if ( load_mouse_ground_pos_into_vector() ) {
+			markers[ selected_marker ].ground_pos = mouse_ground_intersection - mouse_drag_offset;
+		} else {
+			mouse_dragging = false;
+			selected_marker = -1;
+		}
+	}
 }
 
 void App::resize( int width, int height ) {

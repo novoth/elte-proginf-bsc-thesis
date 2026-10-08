@@ -20,6 +20,7 @@ Camera::~Camera() {
 	set_proj( this->fov_y, this->aspect, this->z_near, this->z_far );
 }
 
+#pragma region setters
 void Camera::set_view( glm::vec3 pos, glm::vec3 world_up, glm::vec3 look_at ) {
 	this->pos = pos;
 	this->world_up = world_up;
@@ -59,6 +60,7 @@ void Camera::set_proj( float fov_y, float aspect, float z_near, float z_far ) {
 
 	proj_mtx = glm::perspective( fov_y, aspect, z_near, z_far );
 }
+#pragma endregion
 
 void Camera::update( float dt ) {
 	glm::vec3 new_look_dir( cosf( u ) * sinf( v ), cosf( v ), sinf( u ) * sinf( v ) );
@@ -67,18 +69,19 @@ void Camera::update( float dt ) {
 	glm::vec3 right = glm::normalize( glm::cross( new_look_dir, world_up ) );
 	glm::vec3 forward = glm::cross( world_up, right );
 
-	glm::vec3 d_pos = ( forward * go_fwd + right * go_right + world_up * go_up ) * speed * dt * dist;
+	glm::vec3 d_pos = ( forward * go_fwd + right * go_right ) * speed * dt * dist;
 	new_pos += d_pos;
 	new_pos.y = glm::max( 0.2f, new_pos.y );
 
 	glm::vec3 new_look_at = look_at + d_pos;
-	new_look_at.y = glm::max( 0.2f, new_look_at.y );
+	new_look_at.y = 0.f;
 	
 	set_view( new_pos, world_up, new_look_at );
 
 	topdown = v >= PI - 0.1f;
 }
 
+#pragma region event handling
 void Camera::keyboard_down( const SDL_KeyboardEvent& event ) {
 	switch ( event.key ) {
 	case SDLK_W:
@@ -95,26 +98,20 @@ void Camera::keyboard_down( const SDL_KeyboardEvent& event ) {
 		go_right = -1.f;
 		break;
 
-	case SDLK_E:
-		go_up = 1.f;
-		break;
-	case SDLK_Q:
-		go_up = -1.f;
-		break;
-
 	case SDLK_TAB:
 		if ( event.repeat ) { break; }
 
 		if ( topdown ) {
 			v = 2.f;
+			topdown = false;
 		} else {
 			v = topdown_treshold;
+			topdown = true;
 		}
-		break;
+		if ( app->get_key_modifier() == Modifier::shift ) {
+			u = glm::radians( -90.f );
+		}
 
-	case SDLK_LSHIFT:
-		if ( event.repeat ) { break; }
-		u = glm::radians( -90.f );
 		break;
 	}
 }
@@ -130,16 +127,11 @@ void Camera::keyboard_up( const SDL_KeyboardEvent& event ) {
 	case SDLK_A:
 		go_right = 0.f;
 		break;
-
-	case SDLK_E:
-	case SDLK_Q:
-		go_up = 0.f;
-		break;
 	}
 }
 
 void Camera::mouse_move( const SDL_MouseMotionEvent& event ) {
-	if ( event.state & SDL_BUTTON_MMASK || event.state & SDL_BUTTON_RMASK ) {
+	if ( event.state & SDL_BUTTON_RMASK && app->get_key_modifier() == Modifier::none ) {
 		u += event.xrel / sens;
 		v += event.yrel / sens;
 
@@ -152,9 +144,9 @@ void Camera::mouse_move( const SDL_MouseMotionEvent& event ) {
 }
 
 void Camera::mouse_scroll( const SDL_MouseWheelEvent& event ) {
-	if ( dist > 0.6f && dist < 219.9f ) {
-		glm::vec3 before_zoom_position;
-		glm::vec3 after_zoom_position;
+	if ( dist > 0.5f && dist < 220.f ) {
+		glm::vec2 before_zoom_position;
+		glm::vec2 after_zoom_position;
 
 		glm::vec2 mouse_pos = app->get_mouse_pos();
 		glm::vec2 window_size = app->get_window_size();
@@ -169,8 +161,9 @@ void Camera::mouse_scroll( const SDL_MouseWheelEvent& event ) {
 
 		ray_hit_ground_plane( get_ray_through_pixel( mouse_pos, window_size ), after_zoom_position );
 
-		glm::vec3 diff = ( before_zoom_position - after_zoom_position );
-		set_view( new_pos + diff, world_up, look_at + diff );
+		glm::vec2 vec2_diff = ( before_zoom_position - after_zoom_position );
+		glm::vec3 vec3_diff( vec2_diff.x, 0.f, vec2_diff.y );
+		set_view( new_pos + vec3_diff, world_up, look_at + vec3_diff );
 	} else {
 		dist *= pow( .9f, event.y );
 	}
@@ -181,6 +174,7 @@ void Camera::mouse_scroll( const SDL_MouseWheelEvent& event ) {
 		dist = 0.5f;
 	}
 }
+#pragma endregion
 
 Ray Camera::get_ray_through_pixel( const glm::vec2 mouse_pos, const glm::vec2 window_size ) {
 	glm::vec3 mouse_ndc( 

@@ -188,7 +188,7 @@ bool ray_hit_plane( const Ray ray, const glm::vec3 plane_point, const glm::vec3 
 	return x.x >= 0;
 }
 
-bool ray_hit_ground_plane( const Ray ray, glm::vec3& position ) {
+bool ray_hit_ground_plane( const Ray ray, glm::vec2& position ) {
 	glm::vec3 plane_point( 0.f, 0.f, 0.f );
 	glm::vec3 plane_u( 1.f, 0.f, 0.f );
 	glm::vec3 plane_v( 0.f, 0.f, 1.f );
@@ -197,11 +197,86 @@ bool ray_hit_ground_plane( const Ray ray, glm::vec3& position ) {
 
 	bool result = ray_hit_plane( ray, plane_point, plane_u, plane_v, intersection );
 
+	glm::vec3 intersect_pos = plane_point + intersection.uv.x * plane_u + intersection.uv.y * plane_v;
+	position.x = intersect_pos.x;
+	position.y = intersect_pos.z;
+
 	if ( result ) {
-		position = plane_point + intersection.uv.x * plane_u + intersection.uv.y * plane_v;
 		return true;
 	} else {
-		position = plane_point + intersection.uv.x * plane_u + intersection.uv.y * plane_v;
 		return false;
 	}
 }
+
+#pragma region modifier functions
+constexpr Modifier operator&( Modifier a, Modifier b ){
+	return static_cast<Modifier>( static_cast<unsigned char>( a ) & static_cast<unsigned char>( b ) );
+}
+
+constexpr Modifier operator^( Modifier a, Modifier b ){
+	return static_cast<Modifier>( static_cast<unsigned char>( a ) ^ static_cast<unsigned char>( b ) );
+}
+
+constexpr Modifier operator|( Modifier a, Modifier b ){
+	return static_cast<Modifier>( static_cast<unsigned char>( a ) | static_cast<unsigned char>( b ) );
+}
+
+constexpr Modifier operator~( Modifier a ){
+	return static_cast<Modifier>( ~static_cast<unsigned char>( a ) );
+}
+
+bool key_mod_used( Modifier current_mod, Modifier check ) {
+	return static_cast<unsigned char>( current_mod & check ) != 0;
+}
+
+void key_mod_set( Modifier& current_mod, Modifier to_set ) {
+	current_mod = current_mod | to_set;
+}
+
+void key_mod_remove( Modifier& current_mod, Modifier to_remove ) {
+	current_mod = current_mod & ~ to_remove;
+}
+
+void key_mod_toggle( Modifier& current_mod, Modifier to_remove ) {
+	current_mod = current_mod ^ to_remove;
+}
+
+void tmp_print_key_mod( Modifier current_mod ) {
+	switch ( current_mod ) {
+	case Modifier::none:
+		std::cout << "[ MOD ] None" << std::endl;
+		break;
+	case Modifier::alt:
+		std::cout << "[ MOD ] Alt" << std::endl;
+		break;
+	case Modifier::ctrl:
+		std::cout << "[ MOD ] Ctrl" << std::endl;
+		break;
+	case Modifier::shift:
+		std::cout << "[ MOD ] Shift" << std::endl;
+		break;
+	case Modifier::ctrl_alt:
+		std::cout << "[ MOD ] Ctrl+Alt" << std::endl;
+		break;
+	case Modifier::ctrl_shift:
+		std::cout << "[ MOD ] Ctrl+Shift" << std::endl;
+		break;
+	case Modifier::alt_shift:
+		std::cout << "[ MOD ] Alt+Shift" << std::endl;
+		break;
+	case Modifier::ctrl_alt_shift:
+		std::cout << "[ MOD ] Ctrl+Alt+Shift" << std::endl;
+		break;
+	default:
+		std::cout << "b";
+		for ( int i = 7; i >= 0; --i ) {
+			if ( ( static_cast<unsigned char>( current_mod ) & ( 1 << i ) ) != 0 ) {
+				std::cout << "1";
+			} else {
+				std::cout << "0";
+			}
+		}
+		std::cout << std::endl;
+	}
+}
+#pragma endregion
