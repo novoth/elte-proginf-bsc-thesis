@@ -68,7 +68,7 @@ protected:
 	#pragma endregion
 
 	#pragma region utility functions
-	int get_nearest_marker_id( const glm::vec2 nearest_to, const float max_sqr_radius );
+	int get_nearest_marker_id( const glm::vec2 nearest_to, const float max_radius );
 	bool load_mouse_ground_pos_into_vector();
 	#pragma endregion
 

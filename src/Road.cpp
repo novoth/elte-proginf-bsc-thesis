@@ -9,13 +9,14 @@ Road::~Road() {
 }
 
 glm::vec2 Road::sample_bezier_auto_segment( const float t ) {
+	if ( t < 0 ) {
+		throw std::exception( "Negative t value: %d", t );
+	}
+
 	int segment_id = ( int )floor( t );
 	float remainder = t - segment_id;
-	if ( segment_id < 0 ) { 
-		segment_id = 0;
-		remainder = 0.f;
-	}
-	else if ( segment_id >= segment_count() ) {
+
+	if ( segment_id >= segment_count() ) {
 		segment_id = segment_count();
 		remainder = 0.f;
 	}
@@ -36,6 +37,37 @@ glm::vec2 Road::sample_bezier_segment( const int segment_id, const float t ) {
 
 	Bezier_segment current_segment = bezier_segments[ segment_id ];
 	return bezier( segment_start_point, current_segment.start_handle, current_segment.end_handle, current_segment.end_point, t );
+}
+
+glm::vec2 Road::sample_bezier_derivative_auto( const int& derivative, const float& t ) {
+	if ( derivative < 0 || derivative > 2 ) {
+		throw new std::exception( "Unexpected derivative id: %d", derivative );
+	}
+	else if ( t < 0 ) {
+		throw std::exception( "Negative t value: %d", t );
+	} else if ( derivative == 0 ) {
+		return sample_bezier_auto_segment( t );
+	}
+
+	int segment_id = ( int )floor( t );
+	float remainder = t - segment_id;
+
+	if ( segment_id >= segment_count() ) {
+		segment_id = segment_count() - 1;
+		remainder = 1.f;
+	}
+
+	Bezier_segment segment = bezier_segments[ segment_id ];
+	glm::vec2 a = start_point;
+	if ( segment_id != 0 ) {
+		a = bezier_segments[ segment_id - 1 ].end_point;
+	}
+
+	if ( derivative == 1 ) {
+		return bezier_1der( a, segment.start_handle, segment.end_handle, segment.end_point, remainder );
+	} else {
+		return bezier_2der( a, segment.start_handle, segment.end_handle, segment.end_point, remainder );
+	}
 }
 
 std::vector<Marker> Road::get_road_markers() {
@@ -91,35 +123,75 @@ Mesh Road::generate_road_mesh( const float& d_t ) {
 	const float t_max = ( float )segment_count();
 	int debug_i = 0;
 
+	Vertex left_out;
+
 	for ( float t = 0.f; t < t_max; t += d_t ) {
 		glm::vec2 p = sample_bezier_auto_segment( t );
+		glm::vec2 der1 = sample_bezier_derivative_auto( 1, t );
+		glm::vec2 right = rot_right( glm::normalize( der1 ) );
 
 		float x = 0.f;
+		float used_tmp_left = tmp_left;
+		float used_tmp_right = tmp_right;
 		if ( debug_i % 2 == 0 ) {
 			x = 1.f;
+			right = -right;
+			used_tmp_left = tmp_right;
+			used_tmp_right = tmp_left;
 		}
 
-		Vertex v;
-		v.normal = glm::vec3( 0.f, 1.f, 0.f );
-		v.pos = glm::vec3( p.x, 0.f, p.y );
-		v.uv = glm::vec2( x, 0.f );
+		Vertex v_left;
+		v_left.normal = glm::vec3( 0.f, 1.f, 0.f );
+		v_left.pos = glm::vec3( p.x - s_mult( used_tmp_left, right ).x, 0.f, p.y - s_mult( used_tmp_left, right ).y );
+		v_left.uv = glm::vec2( x, 0.f );
 
 		indices.push_back( ( GLuint )vertices.size() );
-		vertices.push_back( v );
+		vertices.push_back( v_left );
+
+
+		Vertex v_right;
+		v_right.normal = glm::vec3( 0.f, 1.f, 0.f );
+		v_right.pos = glm::vec3( p.x + s_mult( used_tmp_right, right ).x, 0.f, p.y + s_mult( used_tmp_right, right ).y );
+		v_right.uv = glm::vec2( x, 0.f );
+
+		indices.push_back( ( GLuint )vertices.size() );
+		vertices.push_back( v_right );
 		
 		debug_i++;
 	}
 
 	{
 		glm::vec2 p = sample_bezier_auto_segment( t_max );
+		glm::vec2 der1 = sample_bezier_derivative_auto( 1, t_max );
+		glm::vec2 right = rot_right( glm::normalize( der1 ) );
 
-		Vertex v;
-		v.normal = glm::vec3( 0.f, 1.f, 0.f );
-		v.pos = glm::vec3( p.x, 0.f, p.y );
-		v.uv = glm::vec2( 1.f, 0.f );
+		float x = 0.f;
+		float used_tmp_left = tmp_left;
+		float used_tmp_right = tmp_right;
+		if ( debug_i % 2 == 0 ) {
+			x = 1.f;
+			right = -right;
+			used_tmp_left = tmp_right;
+			used_tmp_right = tmp_left;
+		}
+
+		Vertex v_left;
+		v_left.normal = glm::vec3( 0.f, 1.f, 0.f );
+		v_left.pos = glm::vec3( p.x - s_mult( used_tmp_left, right ).x, 0.f, p.y - s_mult( used_tmp_left, right ).y );
+		v_left.uv = glm::vec2( x, 0.f );
 
 		indices.push_back( ( GLuint )vertices.size() );
-		vertices.push_back( v );
+		vertices.push_back( v_left );
+
+
+		Vertex v_right;
+		v_right.normal = glm::vec3( 0.f, 1.f, 0.f );
+		v_right.pos = glm::vec3( p.x + s_mult( used_tmp_right, right ).x, 0.f, p.y + s_mult( used_tmp_right, right ).y );
+		v_right.uv = glm::vec2( x, 0.f );
+
+		indices.push_back( ( GLuint )vertices.size() );
+		vertices.push_back( v_right );
+
 	}
 
 	Mesh ret_mesh;

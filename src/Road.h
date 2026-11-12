@@ -25,6 +25,7 @@ public:
 
 	glm::vec2 sample_bezier_segment( const int segment_id, const float t );
 	glm::vec2 sample_bezier_auto_segment( const float t );
+	glm::vec2 sample_bezier_derivative_auto( const int& derivative, const float& t );
 	std::vector<Marker> get_road_markers();
 
 	void set_position( const int segment_idx, const int point_inside_segment, const glm::vec2 new_position );
@@ -34,6 +35,9 @@ public:
 	int segment_count() { return ( int )bezier_segments.size(); };
 
 	Mesh generate_road_mesh( const float& d_t );
+	
+	float tmp_left = 2.f;
+	float tmp_right = 1.f;
 protected:
 
 	// Point (P), Handle (H) structure:
@@ -41,6 +45,4 @@ protected:
 	glm::vec2 start_point = glm::vec2( 0.f, 0.f );
 	std::vector<Bezier_segment> bezier_segments;
 
-	float tmp_left = 2.f;
-	float tmp_right = 1.f;
 };

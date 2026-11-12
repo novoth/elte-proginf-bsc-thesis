@@ -182,8 +182,8 @@ void App::update( const float dt ) {
 }
 
 #pragma region utility
-int App::get_nearest_marker_id( const glm::vec2 nearest_to, const float max_sqr_radius ) {
-	float min_sqr_dist = max_sqr_radius;
+int App::get_nearest_marker_id( const glm::vec2 nearest_to, const float max_radius ) {
+	float min_sqr_dist = max_radius * max_radius;
 	int min_id = -1;
 
 	for ( int i = 0; i < markers.size(); ++i ) {
@@ -448,12 +448,12 @@ void App::render() {
 	render_ground();
 	render_test();
 
+	tmp_render_bezier();
+
 	render_all_markers();
 	if ( selected_marker != -1 ) {
 		render_selected_marker();
 	}
-
-	tmp_render_bezier();
 
 	glEnable( GL_DEPTH_TEST );
 	#pragma endregion
@@ -482,6 +482,14 @@ void App::render_gui() {
 		if ( ImGui::SliderInt( "Selected Road", &selected_road, -1, ( int )road_segments.size() - 1 ) ) {
 			selected_marker = -1;
 			tmp_select_road( selected_road );
+		}
+		if ( selected_road != -1 ) {
+			if ( ImGui::DragFloat( "Road left", &road_segments[ selected_road ].tmp_left, 0.05f ) ) {
+				tmp_bezier_line = create_obj_from_mesh( road_segments[ selected_road ].generate_road_mesh( tmp_road_resolution ) );
+			}
+			if ( ImGui::DragFloat( "Road right", &road_segments[ selected_road ].tmp_right, 0.05f ) ) {
+				tmp_bezier_line = create_obj_from_mesh( road_segments[ selected_road ].generate_road_mesh( tmp_road_resolution ) );
+			}
 		}
 	}
 
@@ -521,7 +529,7 @@ void App::mouse_down( const SDL_MouseButtonEvent& event ) {
 		if ( event.button == SDL_BUTTON_LEFT ) {
 			if ( markers.size() == 0 ) { break; }
 			if ( load_mouse_ground_pos_into_vector() ) {
-				int min_id = get_nearest_marker_id( mouse_ground_intersection, camera_dist * marker_relative_scale );
+				int min_id = get_nearest_marker_id( mouse_ground_intersection, camera_dist * marker_relative_scale * 0.5f );
 				selected_marker = min_id;
 				if ( min_id == -1 ) { break; }
 
@@ -536,13 +544,13 @@ void App::mouse_down( const SDL_MouseButtonEvent& event ) {
 	case Modifier::ctrl:
 		if ( selected_road != -1 ) {
 			if ( event.button == SDL_BUTTON_LEFT && load_mouse_ground_pos_into_vector() ) {
-				int min_id = get_nearest_marker_id( mouse_ground_intersection, camera_dist * marker_relative_scale );
+				int min_id = get_nearest_marker_id( mouse_ground_intersection, camera_dist * marker_relative_scale * 0.5f );
 
 				if ( min_id != -1 && min_id < markers.size() ) {
 					road_segments[ selected_road ].add_segment( Bezier_segment( glm::vec2( 0.f, 10.f ), glm::vec2( 10.f, 10.f ), glm::vec2( 10.f, 0.f ) ) );
 				}
 			} else if ( event.button == SDL_BUTTON_RIGHT && load_mouse_ground_pos_into_vector() ) {
-				int min_id = get_nearest_marker_id( mouse_ground_intersection, camera_dist * marker_relative_scale );
+				int min_id = get_nearest_marker_id( mouse_ground_intersection, camera_dist * marker_relative_scale * 0.5f );
 
 				if ( min_id != -1 && min_id < markers.size() ) {
 					road_segments[ selected_road ].remove_segment( road_segments[ selected_road ].segment_count() - 1 );
@@ -565,7 +573,7 @@ void App::mouse_down( const SDL_MouseButtonEvent& event ) {
 		}
 		else if ( event.button == SDL_BUTTON_RIGHT ) {
 			if ( load_mouse_ground_pos_into_vector() ) {
-				int min_id = get_nearest_marker_id( mouse_ground_intersection, camera_dist * marker_relative_scale );
+				int min_id = get_nearest_marker_id( mouse_ground_intersection, camera_dist * marker_relative_scale * 0.5f );
 
 				if ( min_id != -1 && min_id < markers.size() ) {
 					markers.erase( markers.begin() + min_id );

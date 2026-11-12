@@ -251,7 +251,7 @@ glm::vec2 bezier_2der( const glm::vec2& a, const glm::vec2& b, const glm::vec2& 
 	return ret;
 }
 
-glm::vec2 right( const glm::vec2& v ) {
+glm::vec2 rot_right( const glm::vec2& v ) {
 	return glm::vec2( v.y, -v.x );
 }
 

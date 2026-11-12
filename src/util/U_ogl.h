@@ -164,7 +164,7 @@ bool ray_hit_ground_plane( const Ray ray, glm::vec2& position );
 glm::vec2 bezier( const glm::vec2& a, const glm::vec2& b, const glm::vec2& c, const glm::vec2& d, const float t );
 glm::vec2 bezier_1der( const glm::vec2& a, const glm::vec2& b, const glm::vec2& c, const glm::vec2& d, const float t );
 glm::vec2 bezier_2der( const glm::vec2& a, const glm::vec2& b, const glm::vec2& c, const glm::vec2& d, const float t );
-glm::vec2 right( const glm::vec2& v );
+glm::vec2 rot_right( const glm::vec2& v );
 glm::vec2 lerp_vec2( const glm::vec2 point_a, const glm::vec2 point_b, const float t );
 glm::vec2 s_mult( const float& s, const glm::vec2& v );
 marker_id fill_marker_id( const unsigned int& segment_id, const unsigned int& point_id );
