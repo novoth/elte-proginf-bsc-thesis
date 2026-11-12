@@ -209,17 +209,54 @@ bool ray_hit_ground_plane( const Ray ray, glm::vec2& position ) {
 	}
 }
 
-glm::vec2 sample_bezier( const glm::vec2 point_a, const glm::vec2 handle_a, const glm::vec2 handle_b, const glm::vec2 point_b, const float t ) {
-	glm::vec2 c = lerp_vec2( point_a, handle_a, t );
-	glm::vec2 d = lerp_vec2( handle_a, handle_b, t );
-	glm::vec2 e = lerp_vec2( handle_b, point_b, t );
+glm::vec2 bezier( const glm::vec2& a, const glm::vec2& b, const glm::vec2& c, const glm::vec2& d, const float t ) {
+	const float t1 = t;
+	const float t2 = t1 * t1;
+	const float t3 = t2 * t1;
 
-	glm::vec2 f = lerp_vec2( c, d, t );
-	glm::vec2 g = lerp_vec2( d, e, t );
+	glm::vec2 a3 = s_mult( 3.f, a );
+	glm::vec2 b3 = s_mult( 3.f, b );
+	glm::vec2 b6 = s_mult( 6.f, b );
+	glm::vec2 c3 = s_mult( 3.f, c );
 
-	glm::vec2 h = lerp_vec2( f, g, t );
+	glm::vec2 ret = s_mult( t3, d - c3 + b3 - a ) + s_mult( t2, c3 - b6 + a3 ) + s_mult( t1, b3 - a3 ) + a;
 
-	return h;
+	return ret;
+}
+
+glm::vec2 bezier_1der( const glm::vec2& a, const glm::vec2& b, const glm::vec2& c, const glm::vec2& d, const float t ) {
+	const float t1 = t;
+	const float t2 = t1 * t1;
+
+	glm::vec2 a3 = s_mult( 3.f, a );
+	glm::vec2 b3 = s_mult( 3.f, b );
+	glm::vec2 b6 = s_mult( 6.f, b );
+	glm::vec2 c3 = s_mult( 3.f, c );
+
+	glm::vec2 ret = s_mult( 3.f * t2, d - c3 + b3 - a ) + s_mult( 2.f * t1, c3 - b6 + a3 ) + b3 - a3;
+
+	return ret;
+}
+
+glm::vec2 bezier_2der( const glm::vec2& a, const glm::vec2& b, const glm::vec2& c, const glm::vec2& d, const float t ) {
+	const float t1 = t;
+
+	glm::vec2 a3 = s_mult( 3.f, a );
+	glm::vec2 b3 = s_mult( 3.f, b );
+	glm::vec2 b6 = s_mult( 6.f, b );
+	glm::vec2 c3 = s_mult( 3.f, c );
+
+	glm::vec2 ret = s_mult( 6.f * t1, d - c3 + b3 - a ) + s_mult( 2.f, c3 - b6 + a3 );
+
+	return ret;
+}
+
+glm::vec2 right( const glm::vec2& v ) {
+	return glm::vec2( v.y, -v.x );
+}
+
+glm::vec2 s_mult( const float& s, const glm::vec2& v ) {
+	return glm::vec2( v.x * s, v.y * s );
 }
 
 glm::vec2 lerp_vec2( const glm::vec2 point_a, const glm::vec2 point_b, const float t ) {

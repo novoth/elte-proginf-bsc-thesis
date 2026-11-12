@@ -35,7 +35,7 @@ glm::vec2 Road::sample_bezier_segment( const int segment_id, const float t ) {
 	}
 
 	Bezier_segment current_segment = bezier_segments[ segment_id ];
-	return sample_bezier( segment_start_point, current_segment.start_handle, current_segment.end_handle, current_segment.end_point, t );
+	return bezier( segment_start_point, current_segment.start_handle, current_segment.end_handle, current_segment.end_point, t );
 }
 
 std::vector<Marker> Road::get_road_markers() {
@@ -82,4 +82,49 @@ void Road::remove_segment( const int& segment_idx ) {
 	}
 
 	bezier_segments.erase( bezier_segments.begin() + segment_idx ); 
+}
+
+Mesh Road::generate_road_mesh( const float& d_t ) {
+	std::vector< Vertex > vertices = {};
+	std::vector< GLuint > indices = {};
+
+	const float t_max = ( float )segment_count();
+	int debug_i = 0;
+
+	for ( float t = 0.f; t < t_max; t += d_t ) {
+		glm::vec2 p = sample_bezier_auto_segment( t );
+
+		float x = 0.f;
+		if ( debug_i % 2 == 0 ) {
+			x = 1.f;
+		}
+
+		Vertex v;
+		v.normal = glm::vec3( 0.f, 1.f, 0.f );
+		v.pos = glm::vec3( p.x, 0.f, p.y );
+		v.uv = glm::vec2( x, 0.f );
+
+		indices.push_back( ( GLuint )vertices.size() );
+		vertices.push_back( v );
+		
+		debug_i++;
+	}
+
+	{
+		glm::vec2 p = sample_bezier_auto_segment( t_max );
+
+		Vertex v;
+		v.normal = glm::vec3( 0.f, 1.f, 0.f );
+		v.pos = glm::vec3( p.x, 0.f, p.y );
+		v.uv = glm::vec2( 1.f, 0.f );
+
+		indices.push_back( ( GLuint )vertices.size() );
+		vertices.push_back( v );
+	}
+
+	Mesh ret_mesh;
+	ret_mesh.vertices = vertices;
+	ret_mesh.indices = indices;
+
+	return ret_mesh;
 }

@@ -134,7 +134,7 @@ bool App::init() {
 	selected_road = 0;
 
 	tmp_select_road( selected_road );
-	tmp_set_bezier_line( road_segments[ 0 ], 0.05f );
+	tmp_bezier_line = create_obj_from_mesh( road_segments[ 0 ].generate_road_mesh( tmp_road_resolution ) );
 
 	return true;
 }
@@ -179,43 +179,6 @@ void App::update( const float dt ) {
 
 	camera->update( dt );
 	camera_dist = camera->get_dist();
-}
-
-void App::tmp_set_bezier_line( Road& road, const float in_delta_t ) {
-	std::vector<Vertex> vertices;
-	std::vector<GLuint> indices;
-
-	glm::vec2 offset( 0.5f, 0.5f );
-
-	float delta_t = in_delta_t;
-	float cummulative_t = 0.f;
-	float t_max = ( float )road.segment_count();
-
-	while ( cummulative_t < t_max + delta_t ) {
-		if ( cummulative_t > t_max ) {
-			delta_t = 1.f;
-			cummulative_t = t_max;
-		}
-
-		glm::vec2 p = road.sample_bezier_auto_segment( cummulative_t );
-
-		Vertex v;
-		v.normal = glm::vec3( 0.f, 1.f, 0.f );
-		v.pos = glm::vec3( p.x, 0.f, p.y );
-		v.uv = glm::vec2( 1.f, 0.f );
-
-		indices.push_back( ( GLuint )vertices.size() );
-		vertices.push_back( v );
-
-		cummulative_t += delta_t;
-	}
-	
-	Mesh tmp_bezier_mesh;
-	tmp_bezier_mesh.vertices = vertices;
-	tmp_bezier_mesh.indices = indices;
-
-	clean_ogl_obj( tmp_bezier_line );
-	tmp_bezier_line = create_obj_from_mesh( tmp_bezier_mesh );
 }
 
 #pragma region utility
@@ -369,7 +332,7 @@ void App::tmp_marker_moved( const Marker_moved_arg& arg ) {
 	}
 
 	if ( selected_road > -1 ) {
-		tmp_set_bezier_line( road_segments[ selected_road ], 0.05f );
+		tmp_bezier_line = create_obj_from_mesh( road_segments[ selected_road ].generate_road_mesh( 0.2f ) );
 	}
 }
 
@@ -516,7 +479,6 @@ void App::render_gui() {
 		if ( ImGui::SliderFloat( "FOV", &camera_fov_deg, 10.f, 150.f, "%.0f" ) ) {
 			camera->set_fov_y( glm::radians( camera_fov_deg ) );
 		}
-		ImGui::SliderFloat( "Marker Scale", &marker_relative_scale, 0.f, 1.f, "%.2f" );
 		if ( ImGui::SliderInt( "Selected Road", &selected_road, -1, ( int )road_segments.size() - 1 ) ) {
 			selected_marker = -1;
 			tmp_select_road( selected_road );
@@ -587,7 +549,7 @@ void App::mouse_down( const SDL_MouseButtonEvent& event ) {
 				}
 			}
 			tmp_select_road( selected_road );
-			tmp_set_bezier_line( road_segments[ selected_road ], 0.05f );
+			tmp_bezier_line = create_obj_from_mesh( road_segments[ selected_road ].generate_road_mesh( 0.2f ) );
 			
 			break;
 		}
@@ -624,6 +586,9 @@ void App::mouse_down( const SDL_MouseButtonEvent& event ) {
 
 void App::mouse_up( const SDL_MouseButtonEvent& event ) {
 	if ( mouse_dragging ) {
+		if ( selected_road != -1 ) {
+			tmp_bezier_line = create_obj_from_mesh( road_segments[ selected_road ].generate_road_mesh( tmp_road_resolution ) );
+		}
 		mouse_dragging = false;
 		selected_marker = -1;
 		move_affected_markers.clear();

@@ -32,10 +32,15 @@ public:
 	void remove_segment( const int& segment_idx );
 
 	int segment_count() { return ( int )bezier_segments.size(); };
+
+	Mesh generate_road_mesh( const float& d_t );
 protected:
 
 	// Point (P), Handle (H) structure:
 	// (Start)->P ( H H P ) * ( n + 1 )
 	glm::vec2 start_point = glm::vec2( 0.f, 0.f );
 	std::vector<Bezier_segment> bezier_segments;
+
+	float tmp_left = 2.f;
+	float tmp_right = 1.f;
 };

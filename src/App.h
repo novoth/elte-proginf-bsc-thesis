@@ -136,8 +136,8 @@ protected:
 	glm::vec2 window_size = glm::vec2( 0.f );
 	glm::vec2 mouse_pos = glm::vec2( 0.f );
 
+	const float tmp_road_resolution = 0.01f;
 	OGL_obj tmp_bezier_line = {};
-	void tmp_set_bezier_line( Road& selected_road, const float in_delta_t );
 	void tmp_render_bezier();
 	void tmp_marker_moved( const Marker_moved_arg& arg );
 	void tmp_select_road( const int& new_selected_road );
