@@ -77,6 +77,8 @@ int main( int argc, char* args[] ) {
 
 	ImGui::StyleColorsLight();
 
+	glLineWidth( 5.f );
+
 	// Application loop
 	{
 		App app;

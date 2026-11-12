@@ -112,7 +112,7 @@ OGL_obj create_obj_from_mesh( const Mesh& mesh ) {
 void clean_ogl_obj( OGL_obj& ogl_obj ) {
 	glDeleteBuffers( 1, &ogl_obj.ibo_id );
 	glDeleteBuffers( 1, &ogl_obj.vbo_id );
-	glDeleteBuffers( 1, &ogl_obj.vao_id );
+	glDeleteVertexArrays( 1, &ogl_obj.vao_id );
 	ogl_obj.ibo_id = 0;
 	ogl_obj.vbo_id = 0;
 	ogl_obj.vao_id = 0;
@@ -163,7 +163,7 @@ Img load_img_from_file( const std::filesystem::path& file_name ) {
 }
 
 char orientation_char_from_camera_u( const float camera_u ) {
-	int i = glm::round( glm::degrees( camera_u ) / 90.f ) + 2.f;
+	int i = ( int )( glm::round( glm::degrees( camera_u ) / 90.f ) + 2 );
 
 	switch ( i ) {
 	case 0:
@@ -171,6 +171,7 @@ char orientation_char_from_camera_u( const float camera_u ) {
 	case 1: return 'N';
 	case 2: return 'E';
 	case 3: return 'S';
+	default: return '$';
 	}
 }
 
@@ -208,6 +209,45 @@ bool ray_hit_ground_plane( const Ray ray, glm::vec2& position ) {
 	}
 }
 
+glm::vec2 sample_bezier( const glm::vec2 point_a, const glm::vec2 handle_a, const glm::vec2 handle_b, const glm::vec2 point_b, const float t ) {
+	glm::vec2 c = lerp_vec2( point_a, handle_a, t );
+	glm::vec2 d = lerp_vec2( handle_a, handle_b, t );
+	glm::vec2 e = lerp_vec2( handle_b, point_b, t );
+
+	glm::vec2 f = lerp_vec2( c, d, t );
+	glm::vec2 g = lerp_vec2( d, e, t );
+
+	glm::vec2 h = lerp_vec2( f, g, t );
+
+	return h;
+}
+
+glm::vec2 lerp_vec2( const glm::vec2 point_a, const glm::vec2 point_b, const float t ) {
+	return glm::vec2( point_a.x * ( 1.f - t ) + point_b.x * t, point_a.y * ( 1.f - t ) + point_b.y * t );
+}
+
+marker_id fill_marker_id( const unsigned int& segment_id, const unsigned int& point_id ) {
+	// marker_id currently 8 bits
+	// ######  ##
+	//         ^^ point id in bezier segment  01->start_handle, 10->end_handle, 11->end_point [ 00->start point ]
+	// ^^^^^^ segment_id: 6 bits: max 64 bezier segments per road
+
+	if ( point_id > 3 || segment_id > 63 ) {
+		std::stringstream s;
+		s << "Marker id out of range!\n(point_id: " << point_id << ", segment_id: " << segment_id << ")";
+		throw std::exception( s.str().c_str() );
+	}
+
+	marker_id ret =  point_id + ( segment_id << 2 );
+
+	return ret;
+}
+
+void read_marker_id( const marker_id& id, unsigned int& segment_id, unsigned int& point_id ) {
+	point_id = id % 4;
+	segment_id = id >> 2;
+}
+
 #pragma region modifier functions
 constexpr Modifier operator&( Modifier a, Modifier b ){
 	return static_cast<Modifier>( static_cast<unsigned char>( a ) & static_cast<unsigned char>( b ) );
@@ -239,44 +279,5 @@ void key_mod_remove( Modifier& current_mod, Modifier to_remove ) {
 
 void key_mod_toggle( Modifier& current_mod, Modifier to_remove ) {
 	current_mod = current_mod ^ to_remove;
-}
-
-void tmp_print_key_mod( Modifier current_mod ) {
-	switch ( current_mod ) {
-	case Modifier::none:
-		std::cout << "[ MOD ] None" << std::endl;
-		break;
-	case Modifier::alt:
-		std::cout << "[ MOD ] Alt" << std::endl;
-		break;
-	case Modifier::ctrl:
-		std::cout << "[ MOD ] Ctrl" << std::endl;
-		break;
-	case Modifier::shift:
-		std::cout << "[ MOD ] Shift" << std::endl;
-		break;
-	case Modifier::ctrl_alt:
-		std::cout << "[ MOD ] Ctrl+Alt" << std::endl;
-		break;
-	case Modifier::ctrl_shift:
-		std::cout << "[ MOD ] Ctrl+Shift" << std::endl;
-		break;
-	case Modifier::alt_shift:
-		std::cout << "[ MOD ] Alt+Shift" << std::endl;
-		break;
-	case Modifier::ctrl_alt_shift:
-		std::cout << "[ MOD ] Ctrl+Alt+Shift" << std::endl;
-		break;
-	default:
-		std::cout << "b";
-		for ( int i = 7; i >= 0; --i ) {
-			if ( ( static_cast<unsigned char>( current_mod ) & ( 1 << i ) ) != 0 ) {
-				std::cout << "1";
-			} else {
-				std::cout << "0";
-			}
-		}
-		std::cout << std::endl;
-	}
 }
 #pragma endregion

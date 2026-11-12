@@ -19,6 +19,7 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="src\Road.cpp" />
     <ClCompile Include="src\util\Camera.cpp" />
     <ClCompile Include="src\App.cpp" />
     <ClCompile Include="src\main.cpp" />
@@ -29,6 +30,7 @@
     <Text Include="exit_codes.txt" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="src\Road.h" />
     <ClInclude Include="src\util\Camera.h" />
     <ClInclude Include="src\App.h" />
     <ClInclude Include="src\util\SDL_GLDebugMessageCallback.h" />
@@ -39,6 +41,7 @@
     <None Include="shader\2d_road\non_lit_ground_sdr_with_local_textures.vert" />
     <None Include="shader\2d_road\outline.frag" />
     <None Include="shader\2d_road\outline.vert" />
+    <None Include="shader\debug.frag" />
     <None Include="shader\test.frag" />
     <None Include="shader\test.vert" />
   </ItemGroup>

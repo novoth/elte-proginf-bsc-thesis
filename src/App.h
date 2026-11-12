@@ -12,6 +12,7 @@
 #include "util/SDL_GLDebugMessageCallback.h"
 
 #include "util/Camera.h"
+#include "Road.h"
 
 class App
 {
@@ -73,13 +74,18 @@ protected:
 
 	#pragma region rendering
 	void set_common_uniforms();
-	void draw_ogl_obj( OGL_obj ogl_obj, const glm::mat4& world_mtx );
+	void draw_ogl_obj( OGL_obj ogl_obj, const glm::mat4& world_mtx, bool lines = false );
 	void render_ground();
 	void render_test();
 	void render_all_markers();
-	void render_marker_outline();
+	void render_selected_marker();
 
 	int triangles_rendered = 0;
+	int line_segments_rendered = 0;
+
+	float camera_dist = 1.f;
+
+	float marker_relative_scale = 0.15f;
 	#pragma endregion
 
 	#pragma region tick
@@ -100,6 +106,8 @@ protected:
 	GLuint test_shader = 0;
 	GLuint non_lit_ground_sdr_with_local_texturing = 0;
 	GLuint outline_shader = 0;
+
+	GLuint debug_shader = 0;
 	#pragma endregion
 
 	#pragma region texture ids/samplers
@@ -115,7 +123,11 @@ protected:
 
 	Camera* camera;
 	std::vector<Marker> markers = {};
+	std::vector<Marker> move_affected_markers = {};
 	int selected_marker = -1;
+
+	std::vector<Road> road_segments = {};
+	int selected_road = -1;
 
 	glm::vec2 mouse_ground_intersection = glm::vec2( 0.f );
 	glm::vec2 mouse_drag_offset = glm::vec2( 0.f );
@@ -123,4 +135,10 @@ protected:
 
 	glm::vec2 window_size = glm::vec2( 0.f );
 	glm::vec2 mouse_pos = glm::vec2( 0.f );
+
+	OGL_obj tmp_bezier_line = {};
+	void tmp_set_bezier_line( Road& selected_road, const float in_delta_t );
+	void tmp_render_bezier();
+	void tmp_marker_moved( const Marker_moved_arg& arg );
+	void tmp_select_road( const int& new_selected_road );
 };

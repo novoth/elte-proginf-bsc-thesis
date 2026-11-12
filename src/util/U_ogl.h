@@ -10,6 +10,10 @@
 #include <iostream>
 #include <fstream>
 #include <SDL3_image/SDL_image.h>
+#include <functional>
+#include <cstdint>
+
+typedef std::uint8_t marker_id;
 
 struct Vertex {
 	glm::vec3 pos;
@@ -57,9 +61,71 @@ struct Ray_intersection {
 	float t;
 };
 
+struct Marker_moved_arg {
+	marker_id id;
+	glm::vec2 delta;
+};
+
 struct Marker {
-	glm::vec2 ground_pos;
-	int type;
+	explicit Marker( glm::vec2* to_update = nullptr, std::function< void( Marker_moved_arg ) > notify_function = nullptr ) : update_pos( to_update ), notify_on_update( std::move( notify_function ) ) {
+		notify_id = 0;
+
+		if ( to_update != nullptr ) {
+			set_base_pos( *to_update );
+		}
+	}
+
+	void set_base_pos( glm::vec2 new_value, bool call_notify_function = true ) {
+		if ( base_pos == new_value ) {
+			return;
+		}
+
+		glm::vec2 delta = new_value - base_pos;
+		base_pos = new_value;
+
+		if ( update_pos != nullptr ) {
+			*update_pos = new_value;
+		}
+		if ( call_notify_function && notify_on_update != nullptr ) {
+			notify_on_update( Marker_moved_arg { notify_id, delta } );
+		}
+	}
+
+	void set_offset( glm::vec2 new_offset ) {
+		offset = new_offset;
+	}
+
+	glm::vec2 get_offset() {
+		return offset;
+	}
+
+	glm::vec2 get_ground_pos() {
+		return base_pos + offset;
+	}
+
+	glm::vec2 get_base_pos() { return base_pos; }
+
+	void set_notify_function( std::function< void( Marker_moved_arg ) > new_notify_function ) {
+		notify_on_update = new_notify_function;
+	}
+
+	void set_id( marker_id new_notify_id ) {
+		notify_id = new_notify_id;
+	}
+
+	marker_id get_id() {
+		return notify_id;
+	}
+		
+private:
+	marker_id notify_id;
+
+	glm::vec2 offset = glm::vec2( 0.f, 0.f );
+	glm::vec2 base_pos = glm::vec2( 0.f, 0.f );
+	glm::vec2 ground_pos = glm::vec2( 0.f, 0.f );
+	glm::vec2 *update_pos = nullptr;
+
+	std::function< void( Marker_moved_arg ) > notify_on_update;
 };
 
 #pragma region key modifiers
@@ -83,7 +149,6 @@ bool key_mod_used( Modifier current_mod, Modifier check );
 void key_mod_set( Modifier& current_mod, Modifier to_set );
 void key_mod_remove( Modifier& current_mod, Modifier to_remove );
 void key_mod_toggle( Modifier& current_mod, Modifier to_remove );
-void tmp_print_key_mod( Modifier current_mod );
 #pragma endregion
 
 GLuint attach_shader( const GLuint program_id, GLenum shader_type, const std::filesystem::path& file_name );
@@ -96,3 +161,7 @@ Img load_img_from_file( const std::filesystem::path& file_name );
 char orientation_char_from_camera_u( const float camera_u );
 bool ray_hit_plane( const Ray ray, const glm::vec3 plane_point, const glm::vec3 plane_u, const glm::vec3 plane_v, Ray_intersection& intersection );
 bool ray_hit_ground_plane( const Ray ray, glm::vec2& position );
+glm::vec2 sample_bezier( const glm::vec2 point_a, const glm::vec2 handle_a, const glm::vec2 handle_b, const glm::vec2 point_b, const float t );
+glm::vec2 lerp_vec2( const glm::vec2 point_a, const glm::vec2 point_b, const float t );
+marker_id fill_marker_id( const unsigned int& segment_id, const unsigned int& point_id );
+void read_marker_id( const marker_id& id, unsigned int& segment_id, unsigned int& point_id );

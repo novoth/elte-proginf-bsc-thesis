@@ -7,7 +7,7 @@ App::App() {
 }
 
 App::~App() {
-	
+	delete camera;
 }
 
 #pragma region initialization
@@ -35,9 +35,14 @@ void App::init_shaders() {
 	link_program( non_lit_ground_sdr_with_local_texturing );
 	
 	outline_shader = glCreateProgram();
-	attach_shader( outline_shader, GL_VERTEX_SHADER, "shader/2d_road/outline.vert" );
+	attach_shader( outline_shader, GL_VERTEX_SHADER, "shader/2d_road/non_lit_ground_sdr_with_local_textures.vert" );
 	attach_shader( outline_shader, GL_FRAGMENT_SHADER, "shader/2d_road/outline.frag" );
 	link_program( outline_shader );
+	
+	debug_shader = glCreateProgram();
+	attach_shader( debug_shader, GL_VERTEX_SHADER, "shader/2d_road/non_lit_ground_sdr_with_local_textures.vert" );
+	attach_shader( debug_shader, GL_FRAGMENT_SHADER, "shader/debug.frag" );
+	link_program( debug_shader );
 }
 
 void App::init_textures() {
@@ -119,6 +124,18 @@ bool App::init() {
 	init_textures();
 	init_geometry();
 
+	// tmp road generation
+	Road road = Road();
+	road.set_position( -1, 0, glm::vec2( 0.f, 0.f ) );
+	road.add_segment( Bezier_segment( glm::vec2( 0.f, 10.f ), glm::vec2( 10.f, 10.f ), glm::vec2( 10.f, 0.f ) ) );
+	road.add_segment( Bezier_segment( glm::vec2( 10.f, -10.f ), glm::vec2( 20.f, -10.f ), glm::vec2( 20.f, 0.f ) ) );
+	road.add_segment( Bezier_segment( glm::vec2( 20.f, 10.f ), glm::vec2( 30.f, 10.f ), glm::vec2( 30.f, 0.f ) ) );
+	road_segments.push_back( road );
+	selected_road = 0;
+
+	tmp_select_road( selected_road );
+	tmp_set_bezier_line( road_segments[ 0 ], 0.05f );
+
 	return true;
 }
 #pragma endregion
@@ -161,6 +178,44 @@ void App::update( const float dt ) {
 	}
 
 	camera->update( dt );
+	camera_dist = camera->get_dist();
+}
+
+void App::tmp_set_bezier_line( Road& road, const float in_delta_t ) {
+	std::vector<Vertex> vertices;
+	std::vector<GLuint> indices;
+
+	glm::vec2 offset( 0.5f, 0.5f );
+
+	float delta_t = in_delta_t;
+	float cummulative_t = 0.f;
+	float t_max = ( float )road.segment_count();
+
+	while ( cummulative_t < t_max + delta_t ) {
+		if ( cummulative_t > t_max ) {
+			delta_t = 1.f;
+			cummulative_t = t_max;
+		}
+
+		glm::vec2 p = road.sample_bezier_auto_segment( cummulative_t );
+
+		Vertex v;
+		v.normal = glm::vec3( 0.f, 1.f, 0.f );
+		v.pos = glm::vec3( p.x, 0.f, p.y );
+		v.uv = glm::vec2( 1.f, 0.f );
+
+		indices.push_back( ( GLuint )vertices.size() );
+		vertices.push_back( v );
+
+		cummulative_t += delta_t;
+	}
+	
+	Mesh tmp_bezier_mesh;
+	tmp_bezier_mesh.vertices = vertices;
+	tmp_bezier_mesh.indices = indices;
+
+	clean_ogl_obj( tmp_bezier_line );
+	tmp_bezier_line = create_obj_from_mesh( tmp_bezier_mesh );
 }
 
 #pragma region utility
@@ -169,8 +224,9 @@ int App::get_nearest_marker_id( const glm::vec2 nearest_to, const float max_sqr_
 	int min_id = -1;
 
 	for ( int i = 0; i < markers.size(); ++i ) {
-		float x = markers[ i ].ground_pos.x + .5f - mouse_ground_intersection.x;
-		float y = markers[ i ].ground_pos.y + .5f - mouse_ground_intersection.y;
+		glm::vec2 marker_ground_pos = markers[ i ].get_ground_pos();
+		float x = marker_ground_pos.x + .5f - mouse_ground_intersection.x;
+		float y = marker_ground_pos.y + .5f - mouse_ground_intersection.y;
 
 		float sqr_dist = x * x + y * y;
 
@@ -188,18 +244,152 @@ bool App::load_mouse_ground_pos_into_vector() {
 }
 #pragma endregion
 
+void App::tmp_select_road( const int& new_selected_road ) {
+	selected_road = new_selected_road;
+	if ( new_selected_road == -1 ) {
+		markers.clear();
+		
+		return;
+	}
+
+	markers = road_segments[ new_selected_road ].get_road_markers();
+	for ( Marker& marker : markers ) {
+		marker.set_offset( glm::vec2( -.5f, -.5f ) );
+		marker.set_notify_function( [ this ]( Marker_moved_arg arg ) { tmp_marker_moved( arg ); } );
+	}
+}
+
+void App::tmp_marker_moved( const Marker_moved_arg& arg ) {
+	unsigned int segment_id = 0;
+	unsigned int point_id = 0;
+
+	read_marker_id( arg.id, segment_id, point_id );
+
+	switch ( point_id ) {
+	case 0:
+		{
+			marker_id affected_marker_id = fill_marker_id( 0, 1 );
+
+			for ( Marker& marker : markers ) {
+				if ( marker.get_id() == affected_marker_id ) {
+					marker.set_base_pos( marker.get_base_pos() + arg.delta, false );
+
+					break;
+				}
+			}
+		}
+
+		break;
+	case 1:
+		if ( segment_id != 0 ) {
+			marker_id affected_marker_id = fill_marker_id( segment_id - 1, 2 );
+			marker_id pivot_marker_id = fill_marker_id( segment_id - 1, 3 );
+			
+			glm::vec2 moved_marker_pos( 0.f, 0.f );
+			glm::vec2 pivot_pos( 0.f, 0.f );
+
+			for ( Marker& marker : markers ) {
+				if ( marker.get_id() == pivot_marker_id ) {
+					pivot_pos = marker.get_base_pos();
+				} else if ( marker.get_id() == arg.id ) {
+					moved_marker_pos = marker.get_base_pos();
+				}
+			}
+
+			for ( Marker& marker : markers ) {
+				if ( marker.get_id() == affected_marker_id ) {
+					glm::vec2 other_handle_diff = ( marker.get_base_pos() - pivot_pos );
+					float other_handle_len = sqrt( other_handle_diff.x * other_handle_diff.x + other_handle_diff.y * other_handle_diff.y );
+
+					glm::vec2 diff = glm::normalize( pivot_pos - moved_marker_pos );
+					marker.set_base_pos( pivot_pos + diff * other_handle_len, false );
+
+					break;
+				}
+			}
+		}
+
+		break;
+	case 2:
+		{	
+			marker_id affected_marker_id;
+			try {
+				affected_marker_id = fill_marker_id( segment_id + 1, 1 );
+			} catch ( std::exception ) {
+				break;
+			}
+			marker_id pivot_marker_id = fill_marker_id( segment_id, 3 );
+
+			glm::vec2 moved_marker_pos( 0.f, 0.f );
+			glm::vec2 pivot_pos( 0.f, 0.f );
+
+			for ( Marker& marker : markers ) {
+				if ( marker.get_id() == pivot_marker_id ) {
+					pivot_pos = marker.get_base_pos();
+				} else if ( marker.get_id() == arg.id ) {
+					moved_marker_pos = marker.get_base_pos();
+				}
+			}
+
+			for ( Marker& marker : markers ) {
+				if ( marker.get_id() == affected_marker_id ) {
+					glm::vec2 other_handle_diff = ( marker.get_base_pos() - pivot_pos );
+					float other_handle_len = sqrt( other_handle_diff.x * other_handle_diff.x + other_handle_diff.y * other_handle_diff.y );
+
+					glm::vec2 diff = glm::normalize( pivot_pos - moved_marker_pos );
+					marker.set_base_pos( pivot_pos + diff * other_handle_len, false );
+
+					break;
+				}
+			}
+		}
+
+		break;
+	case 3:
+		{
+			marker_id prev_marker_id = fill_marker_id( segment_id, 2 );
+			marker_id next_marker_id;
+
+			try {
+				next_marker_id = fill_marker_id( segment_id + 1, 1 );
+			} catch ( std::exception ) {
+				break;
+			}
+
+			for ( Marker& marker : markers ) {
+				if ( marker.get_id() == prev_marker_id || marker.get_id() == next_marker_id ) {
+					marker.set_base_pos( marker.get_base_pos() + arg.delta, false );
+				}
+			}
+		}
+
+		break;
+	default:
+		break;
+	}
+
+	if ( selected_road > -1 ) {
+		tmp_set_bezier_line( road_segments[ selected_road ], 0.05f );
+	}
+}
+
 #pragma region rendering
 void App::set_common_uniforms() {
 	glm::mat4 view_proj_mtx = camera->get_view_proj_mtx();
 	glUniformMatrix4fv( uniform_location( "view_proj" ), 1, GL_FALSE, glm::value_ptr( view_proj_mtx ) );
 }
 
-void App::draw_ogl_obj(OGL_obj ogl_obj, const glm::mat4& world_mtx ) {
+void App::draw_ogl_obj(OGL_obj ogl_obj, const glm::mat4& world_mtx, bool lines ) {
 	glUniformMatrix4fv( uniform_location( "world" ), 1, GL_FALSE, glm::value_ptr( world_mtx ) );
 	glUniformMatrix4fv( uniform_location( "world_i_t" ), 1, GL_FALSE, glm::value_ptr( glm::transpose( glm::inverse( world_mtx ) ) ) );
 	glBindVertexArray( ogl_obj.vao_id );
-	triangles_rendered += ogl_obj.count / 3;
-	glDrawElements( GL_TRIANGLES, ogl_obj.count, GL_UNSIGNED_INT, nullptr );
+	if ( !lines ) {
+		triangles_rendered += ogl_obj.count / 3;
+		glDrawElements( GL_TRIANGLES, ogl_obj.count, GL_UNSIGNED_INT, nullptr );
+	} else {
+		line_segments_rendered += ogl_obj.count;
+		glDrawElements( GL_LINE_STRIP, ogl_obj.count, GL_UNSIGNED_INT, nullptr );
+	}
 }
 
 void App::render_ground() {
@@ -237,20 +427,23 @@ void App::render_all_markers() {
 	glBindTextureUnit( 0, marker_texture_id );
 	glUniform1i( uniform_location( "used_texture" ), 0 );
 
+	float scale = camera_dist * marker_relative_scale;
+
 	for ( int i = 0; i < markers.size(); ++i ) {
 		if ( i == selected_marker ) { continue; }
+		glm::vec2 marker_ground_pos = markers[ i ].get_base_pos() + markers[ i ].get_offset() * scale;
 		glm::mat4 current_marker_world_mtx(
-			glm::vec4( 1.f, 0.f, 0.f, 0.f ),
-			glm::vec4( 0.f, 1.f, 0.f, 0.f ),
-			glm::vec4( 0.f, 0.f, 1.f, 0.f ),
-			glm::vec4( markers[ i ].ground_pos.x, 0.f, markers[ i ].ground_pos.y, 1.f )
+			glm::vec4( scale, 0.f, 0.f, 0.f ),
+			glm::vec4( 0.f, scale, 0.f, 0.f ),
+			glm::vec4( 0.f, 0.f, scale, 0.f ),
+			glm::vec4( marker_ground_pos.x, 0.f, marker_ground_pos.y, 1.f )
 		);
 
 		draw_ogl_obj( marker, current_marker_world_mtx );
 	}
 }
 
-void App::render_marker_outline() {
+void App::render_selected_marker() {
 	glUseProgram( outline_shader );
 	glBindSampler( 0, pixel_2d_sampler_id );
 
@@ -259,19 +452,32 @@ void App::render_marker_outline() {
 	glBindTextureUnit( 0, marker_texture_id );
 	glUniform1i( uniform_location( "used_texture" ), 0 );
 
-	glm::mat4 outlined_world_mtx(
-		glm::vec4( 1.f, 0.f, 0.f, 0.f ),
-		glm::vec4( 0.f, 1.f, 0.f, 0.f ),
-		glm::vec4( 0.f, 0.f, 1.f, 0.f ),
-		glm::vec4( markers[ selected_marker ].ground_pos.x, 0.f, markers[ selected_marker ].ground_pos.y, 1.f )
+	float scale = camera_dist * marker_relative_scale;
+
+	glm::vec2 marker_ground_pos = markers[ selected_marker ].get_base_pos() + markers[ selected_marker ].get_offset() * scale;
+	glm::mat4 current_marker_world_mtx(
+		glm::vec4( scale, 0.f, 0.f, 0.f ),
+		glm::vec4( 0.f, scale, 0.f, 0.f ),
+		glm::vec4( 0.f, 0.f, scale, 0.f ),
+		glm::vec4( marker_ground_pos.x, 0.f, marker_ground_pos.y, 1.f )
 	);
 
-	draw_ogl_obj( marker, outlined_world_mtx );
+	draw_ogl_obj( marker, current_marker_world_mtx );
+}
+
+void App::tmp_render_bezier() {
+	glUseProgram( debug_shader );
+	glBindSampler( 0, pixel_2d_sampler_id );
+
+	set_common_uniforms();
+
+	draw_ogl_obj( tmp_bezier_line, glm::mat4( 1.0f ), true );
 }
 
 void App::render() {
 	glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
 	triangles_rendered = 0;
+	line_segments_rendered = 0;
 
 	#pragma region render 2d ground
 	glDisable( GL_DEPTH_TEST );
@@ -279,11 +485,12 @@ void App::render() {
 	render_ground();
 	render_test();
 
-	
 	render_all_markers();
 	if ( selected_marker != -1 ) {
-		render_marker_outline();
+		render_selected_marker();
 	}
+
+	tmp_render_bezier();
 
 	glEnable( GL_DEPTH_TEST );
 	#pragma endregion
@@ -300,8 +507,8 @@ void App::render_gui() {
 	if ( ImGui::Begin( "Info" ) ) {
 		ImGui::Text( "FPS: %.1f", ImGui::GetIO().Framerate );
 		ImGui::Text( "Triangles: %d", triangles_rendered );
+		ImGui::Text( "Lines: %d", line_segments_rendered );
 		ImGui::Text( "Facing: %c", orientation_char_from_camera_u( camera->u ) );
-		//ImGui::Text( "Mouse pos: %.0f , %.0f; drag: %d", mouse_pos.x, mouse_pos.y, mouse_dragging );
 
 		ImGui::Separator();
 
@@ -309,7 +516,11 @@ void App::render_gui() {
 		if ( ImGui::SliderFloat( "FOV", &camera_fov_deg, 10.f, 150.f, "%.0f" ) ) {
 			camera->set_fov_y( glm::radians( camera_fov_deg ) );
 		}
-	
+		ImGui::SliderFloat( "Marker Scale", &marker_relative_scale, 0.f, 1.f, "%.2f" );
+		if ( ImGui::SliderInt( "Selected Road", &selected_road, -1, ( int )road_segments.size() - 1 ) ) {
+			selected_marker = -1;
+			tmp_select_road( selected_road );
+		}
 	}
 
 	ImGui::End();
@@ -348,10 +559,11 @@ void App::mouse_down( const SDL_MouseButtonEvent& event ) {
 		if ( event.button == SDL_BUTTON_LEFT ) {
 			if ( markers.size() == 0 ) { break; }
 			if ( load_mouse_ground_pos_into_vector() ) {
-				int min_id = get_nearest_marker_id( mouse_ground_intersection, .2f );
-
+				int min_id = get_nearest_marker_id( mouse_ground_intersection, camera_dist * marker_relative_scale );
 				selected_marker = min_id;
-				mouse_drag_offset = mouse_ground_intersection - markers[ min_id ].ground_pos;
+				if ( min_id == -1 ) { break; }
+
+				mouse_drag_offset = mouse_ground_intersection - markers[ min_id ].get_ground_pos() + markers[ min_id ].get_offset();
 				
 				if ( selected_marker != -1 ) {
 					mouse_dragging = true;
@@ -360,18 +572,38 @@ void App::mouse_down( const SDL_MouseButtonEvent& event ) {
 		}
 		break;
 	case Modifier::ctrl:
+		if ( selected_road != -1 ) {
+			if ( event.button == SDL_BUTTON_LEFT && load_mouse_ground_pos_into_vector() ) {
+				int min_id = get_nearest_marker_id( mouse_ground_intersection, camera_dist * marker_relative_scale );
+
+				if ( min_id != -1 && min_id < markers.size() ) {
+					road_segments[ selected_road ].add_segment( Bezier_segment( glm::vec2( 0.f, 10.f ), glm::vec2( 10.f, 10.f ), glm::vec2( 10.f, 0.f ) ) );
+				}
+			} else if ( event.button == SDL_BUTTON_RIGHT && load_mouse_ground_pos_into_vector() ) {
+				int min_id = get_nearest_marker_id( mouse_ground_intersection, camera_dist * marker_relative_scale );
+
+				if ( min_id != -1 && min_id < markers.size() ) {
+					road_segments[ selected_road ].remove_segment( road_segments[ selected_road ].segment_count() - 1 );
+				}
+			}
+			tmp_select_road( selected_road );
+			tmp_set_bezier_line( road_segments[ selected_road ], 0.05f );
+			
+			break;
+		}
 		if ( event.button == SDL_BUTTON_LEFT ) {
 			if ( load_mouse_ground_pos_into_vector() ) {
 				Marker new_marker;
-				new_marker.ground_pos = mouse_ground_intersection + glm::vec2( -.5f, -.5f );
-				new_marker.type = 0;
+				new_marker.set_offset( glm::vec2( -.5f, -.5f ) );
+				new_marker.set_base_pos( mouse_ground_intersection );
+				new_marker.set_notify_function( [ this ]( Marker_moved_arg arg ) { tmp_marker_moved( arg ); } );
 
 				markers.push_back( new_marker );
 			}
 		}
 		else if ( event.button == SDL_BUTTON_RIGHT ) {
 			if ( load_mouse_ground_pos_into_vector() ) {
-				int min_id = get_nearest_marker_id( mouse_ground_intersection, .2f );
+				int min_id = get_nearest_marker_id( mouse_ground_intersection, camera_dist * marker_relative_scale );
 
 				if ( min_id != -1 && min_id < markers.size() ) {
 					markers.erase( markers.begin() + min_id );
@@ -384,6 +616,7 @@ void App::mouse_down( const SDL_MouseButtonEvent& event ) {
 		if ( event.button == SDL_BUTTON_RIGHT ) {
 			markers.clear();
 			selected_marker = -1;
+			selected_road = -1;
 		}
 		break;
 	}
@@ -393,6 +626,7 @@ void App::mouse_up( const SDL_MouseButtonEvent& event ) {
 	if ( mouse_dragging ) {
 		mouse_dragging = false;
 		selected_marker = -1;
+		move_affected_markers.clear();
 	}
 }
 
@@ -407,11 +641,15 @@ void App::mouse_move( const SDL_MouseMotionEvent& event ) {
 	camera->mouse_move( event );
 
 	if ( mouse_dragging ) {
-		if ( load_mouse_ground_pos_into_vector() ) {
-			markers[ selected_marker ].ground_pos = mouse_ground_intersection - mouse_drag_offset;
-		} else {
+		if ( selected_marker == -1 ) {
 			mouse_dragging = false;
-			selected_marker = -1;
+		} else {
+			if ( load_mouse_ground_pos_into_vector() ) {
+				markers[ selected_marker ].set_base_pos( mouse_ground_intersection - mouse_drag_offset );
+			} else {
+				mouse_dragging = false;
+				selected_marker = -1;
+			}
 		}
 	}
 }
