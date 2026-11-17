@@ -117,6 +117,12 @@ void Road::remove_segment( const int& segment_idx ) {
 }
 
 Mesh Road::generate_road_mesh( const float& d_t ) {
+	Mesh ret_mesh;
+
+	if ( tmp_left + tmp_right < 0.01f ) {
+		return ret_mesh;
+	}
+
 	std::vector< Vertex > vertices = {};
 	std::vector< GLuint > indices = {};
 
@@ -165,9 +171,12 @@ Mesh Road::generate_road_mesh( const float& d_t ) {
 		vertices.push_back( v );
 	}
 
-	indices = triangulate_counterclockwise( counter_clockwise_points );
+	try {
+		indices = triangulate_counterclockwise( counter_clockwise_points );
+	} catch ( std::exception ) {
+		// ignored
+	}
 
-	Mesh ret_mesh;
 	ret_mesh.vertices = vertices;
 	ret_mesh.indices = indices;
 

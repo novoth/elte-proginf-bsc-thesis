@@ -286,7 +286,7 @@ void read_marker_id( const marker_id& id, unsigned int& segment_id, unsigned int
 }
 
 std::vector< GLuint > triangulate_counterclockwise( const std::vector< glm::vec2 >& points ) {
-
+	
 	std::vector< Int_vec_pair > pairs = {};
 
 	std::vector< GLuint > ret = {};
@@ -369,7 +369,7 @@ bool triangle_contains_point( const glm::vec2& a, const glm::vec2& b, const glm:
 	// [ a.y  b.y  c.y ] * [ l2 ] = [ p.y ]
 	// [  1    1    1  ]   [ l3 ]   [  1  ]
 	
-	glm::mat3 m(
+	/*glm::mat3 m(
 		a.x, b.x, c.x,
 		a.y, b.y, c.y,
 		1.f, 1.f, 1.f
@@ -377,7 +377,16 @@ bool triangle_contains_point( const glm::vec2& a, const glm::vec2& b, const glm:
 	glm::vec3 p( point.x, point.y, 1.f );
 
 	glm::vec3 l123 = p * glm::inverse( m );
-	return l123.x > 0 && l123.y > 0 && l123.z > 0;
+	return l123.x > 0 && l123.y > 0 && l123.z > 0;*/
+
+	float dot1 = glm::dot( rot_right( c - b ), point - b );
+	float dot2 = glm::dot( rot_right( a - c ), point - c );
+	float dot3 = glm::dot( rot_right( b - a ), point - a );
+
+	bool has_neg = ( dot1 < 0 ) || ( dot2 < 0 ) || ( dot3 < 0 );
+	bool has_pos = ( dot1 > 0 ) || ( dot2 > 0 ) || ( dot3 > 0 );
+
+	return !( has_neg && has_pos );
 }
 
 bool is_convex_triangle( const glm::vec2& prev, const glm::vec2& current, const glm::vec2& next ) {

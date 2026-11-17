@@ -13,6 +13,8 @@
 #include <functional>
 #include <cstdint>
 
+#include <chrono>
+
 typedef std::uint8_t marker_id;
 
 struct Vertex {

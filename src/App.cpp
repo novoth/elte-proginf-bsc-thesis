@@ -5,7 +5,7 @@
 App::App() {
 	camera = new Camera( this );
 
-	glPolygonMode(GL_FRONT_AND_BACK,GL_LINE);
+	//glPolygonMode(GL_FRONT_AND_BACK,GL_LINE);
 }
 
 App::~App() {
@@ -232,6 +232,7 @@ void App::tmp_marker_moved( const Marker_moved_arg& arg ) {
 	read_marker_id( arg.id, segment_id, point_id );
 
 	switch ( point_id ) {
+	// start point
 	case 0:
 		{
 			marker_id affected_marker_id = fill_marker_id( 0, 1 );
@@ -246,6 +247,7 @@ void App::tmp_marker_moved( const Marker_moved_arg& arg ) {
 		}
 
 		break;
+	// start handle
 	case 1:
 		if ( segment_id != 0 ) {
 			marker_id affected_marker_id = fill_marker_id( segment_id - 1, 2 );
@@ -268,7 +270,11 @@ void App::tmp_marker_moved( const Marker_moved_arg& arg ) {
 					float other_handle_len = sqrt( other_handle_diff.x * other_handle_diff.x + other_handle_diff.y * other_handle_diff.y );
 
 					glm::vec2 diff = glm::normalize( pivot_pos - moved_marker_pos );
-					marker.set_base_pos( pivot_pos + diff * other_handle_len, false );
+					if ( key_modifier != Modifier::shift ) {
+						marker.set_base_pos( pivot_pos + diff * glm::length( pivot_pos - moved_marker_pos ), false );
+					} else {
+						marker.set_base_pos( pivot_pos + diff * other_handle_len, false );
+					}
 
 					break;
 				}
@@ -276,6 +282,7 @@ void App::tmp_marker_moved( const Marker_moved_arg& arg ) {
 		}
 
 		break;
+	// end handle
 	case 2:
 		{	
 			marker_id affected_marker_id;
@@ -303,7 +310,11 @@ void App::tmp_marker_moved( const Marker_moved_arg& arg ) {
 					float other_handle_len = sqrt( other_handle_diff.x * other_handle_diff.x + other_handle_diff.y * other_handle_diff.y );
 
 					glm::vec2 diff = glm::normalize( pivot_pos - moved_marker_pos );
-					marker.set_base_pos( pivot_pos + diff * other_handle_len, false );
+					if ( key_modifier != Modifier::shift ) {
+						marker.set_base_pos( pivot_pos + diff * glm::length( pivot_pos - moved_marker_pos ), false );
+					} else {
+						marker.set_base_pos( pivot_pos + diff * other_handle_len, false );
+					}
 
 					break;
 				}
@@ -311,6 +322,7 @@ void App::tmp_marker_moved( const Marker_moved_arg& arg ) {
 		}
 
 		break;
+	// end point
 	case 3:
 		{
 			marker_id prev_marker_id = fill_marker_id( segment_id, 2 );
@@ -433,10 +445,14 @@ void App::render_selected_marker() {
 }
 
 void App::tmp_render_bezier() {
-	glUseProgram( debug_shader );
+	glUseProgram( test_shader );
 	glBindSampler( 0, pixel_2d_sampler_id );
 
 	set_common_uniforms();
+
+	glBindTextureUnit( 0, test_texture_id );
+	glUniform1i( uniform_location( "test_texture" ), 0 );
+	glUniform1i( uniform_location( "state" ), 0 );
 
 	draw_ogl_obj( tmp_bezier_line, glm::mat4( 1.0f ) );
 }
@@ -489,10 +505,10 @@ void App::render_gui() {
 		}
 		if ( selected_road != -1 ) {
 			if ( ImGui::DragFloat( "Road left", &road_segments[ selected_road ].tmp_left, 0.05f ) ) {
-				tmp_bezier_line = create_obj_from_mesh( road_segments[ selected_road ].generate_road_mesh( tmp_road_resolution ) );
+				tmp_bezier_line = create_obj_from_mesh( road_segments[ selected_road ].generate_road_mesh( 0.2f ) );
 			}
 			if ( ImGui::DragFloat( "Road right", &road_segments[ selected_road ].tmp_right, 0.05f ) ) {
-				tmp_bezier_line = create_obj_from_mesh( road_segments[ selected_road ].generate_road_mesh( tmp_road_resolution ) );
+				tmp_bezier_line = create_obj_from_mesh( road_segments[ selected_road ].generate_road_mesh( 0.2f ) );
 			}
 		}
 	}
