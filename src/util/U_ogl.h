@@ -128,6 +128,11 @@ private:
 	std::function< void( Marker_moved_arg ) > notify_on_update;
 };
 
+struct Int_vec_pair {
+	int idx;
+	glm::vec2 pos;
+};
+
 #pragma region key modifiers
 enum class Modifier : unsigned char {
 	none = 0,
@@ -169,3 +174,8 @@ glm::vec2 lerp_vec2( const glm::vec2 point_a, const glm::vec2 point_b, const flo
 glm::vec2 s_mult( const float& s, const glm::vec2& v );
 marker_id fill_marker_id( const unsigned int& segment_id, const unsigned int& point_id );
 void read_marker_id( const marker_id& id, unsigned int& segment_id, unsigned int& point_id );
+std::vector< GLuint > triangulate_counterclockwise( const std::vector< glm::vec2 >& points );
+bool is_convex_triangle( const glm::vec2& prev, const glm::vec2& current, const glm::vec2& next );
+template <typename T>
+int safe_index_vector( const std::vector< T >& vector, int idx );
+bool triangle_contains_point( const glm::vec2& a, const glm::vec2& b, const glm::vec2& c, const glm::vec2& point );

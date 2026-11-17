@@ -4,6 +4,8 @@
 
 App::App() {
 	camera = new Camera( this );
+
+	glPolygonMode(GL_FRONT_AND_BACK,GL_LINE);
 }
 
 App::~App() {
@@ -80,20 +82,6 @@ void App::init_geometry() {
 	};
 	ground = create_obj_from_mesh( ground_gpu );
 
-	Mesh test_gpu = {
-		std::vector<Vertex>{
-			{ glm::vec3( 0.f, 0.f, 0.f ), glm::vec3( 0.f, 1.f, 0.f ), glm::vec2( 0.f, 0.f ) },
-			{ glm::vec3( 0.f, 0.f, 1.f ), glm::vec3( 0.f, 1.f, 0.f ), glm::vec2( 0.f, 0.f ) },
-			{ glm::vec3( 10.f, 0.f, 0.f ), glm::vec3( 0.f, 1.f, 0.f ), glm::vec2( 0.f, 0.f ) },
-			{ glm::vec3( 1.f, 0.f, 2.f ), glm::vec3( 0.f, 1.f, 0.f ), glm::vec2( 0.f, 0.f ) },
-		},
-		std::vector<GLuint>{
-			0, 1, 2,
-			2, 1, 3,
-		}
-	};
-	test = create_obj_from_mesh( test_gpu );
-
 	Mesh marker_gpu = {
 		std::vector<Vertex>{
 			{ glm::vec3( 0.f, 0.f, 0.f ), glm::vec3( 0.f, 1.f, 0.f ), glm::vec2( 0.f, 0.f ) },
@@ -154,7 +142,7 @@ void App::clean_textures() {
 }
 
 void App::clean_geometry() {
-	clean_ogl_obj( test );
+	clean_ogl_obj( tmp_bezier_line );
 	clean_ogl_obj( ground );
 }
 
@@ -167,6 +155,21 @@ void App::clean() {
 
 void App::tick() {
 	tick_time += tick_dt;
+
+	if ( markers.size() > 2 ) {
+
+		glm::vec2 previous = markers[ 0 ].get_base_pos();
+		glm::vec2 current = markers[ 1 ].get_base_pos();
+		glm::vec2 next = markers[ 2 ].get_base_pos();
+
+		glm::vec2 incoming = glm::normalize( current - previous );
+		glm::vec2 outgoing = glm::normalize( next - current );
+
+		float dot = glm::dot( rot_right( incoming ), outgoing );
+
+		// ha dot product > 0		=> konvex csúcs, vágható
+		//std::cout << dot << std::endl;
+	}
 }
 
 void App::update( const float dt ) {
@@ -332,6 +335,7 @@ void App::tmp_marker_moved( const Marker_moved_arg& arg ) {
 	}
 
 	if ( selected_road > -1 ) {
+		clean_ogl_obj( tmp_bezier_line );
 		tmp_bezier_line = create_obj_from_mesh( road_segments[ selected_road ].generate_road_mesh( 0.2f ) );
 	}
 }
@@ -378,7 +382,7 @@ void App::render_test() {
 	glUniform1i( uniform_location( "test_texture" ), 0 );
 	glUniform1i( uniform_location( "state" ), 0 );
 
-	draw_ogl_obj( test, glm::translate( glm::mat4( 1.f ), glm::vec3( 0.f, 0.f, 0.f) ) );
+	draw_ogl_obj( tmp_bezier_line, glm::translate( glm::mat4( 1.f ), glm::vec3( 0.f, 0.f, 0.f) ) );
 }
 
 void App::render_all_markers() {
@@ -434,7 +438,7 @@ void App::tmp_render_bezier() {
 
 	set_common_uniforms();
 
-	draw_ogl_obj( tmp_bezier_line, glm::mat4( 1.0f ), true );
+	draw_ogl_obj( tmp_bezier_line, glm::mat4( 1.0f ) );
 }
 
 void App::render() {
@@ -446,7 +450,7 @@ void App::render() {
 	glDisable( GL_DEPTH_TEST );
 
 	render_ground();
-	render_test();
+	//render_test();
 
 	tmp_render_bezier();
 

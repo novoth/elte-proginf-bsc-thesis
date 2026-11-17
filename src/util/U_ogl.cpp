@@ -285,6 +285,125 @@ void read_marker_id( const marker_id& id, unsigned int& segment_id, unsigned int
 	segment_id = id >> 2;
 }
 
+std::vector< GLuint > triangulate_counterclockwise( const std::vector< glm::vec2 >& points ) {
+
+	std::vector< Int_vec_pair > pairs = {};
+
+	std::vector< GLuint > ret = {};
+
+	for ( int i = 0; i < points.size(); ++i ) {
+		pairs.push_back( Int_vec_pair( i, points[ i ] ) );
+	}
+
+	int i = -1;
+	int prev_i, next_i;
+	bool was_cuttable = false;
+	int failsafe_count = 0;
+	
+	while ( pairs.size() > 3 ) {
+		was_cuttable = false;
+		while ( !was_cuttable ) {
+			++failsafe_count;
+
+
+			if ( failsafe_count > 1000 ) {
+				throw std::exception( "Failsafe count exceeded the limit. Could not triangulate mesh." );
+			}
+				
+			++i;
+			i = safe_index_vector( pairs, i );
+			prev_i = safe_index_vector( pairs, i - 1 );
+			next_i = safe_index_vector( pairs, i + 1 );
+
+
+			Int_vec_pair& prev_pair = pairs[ prev_i ];
+			Int_vec_pair& current_pair = pairs[ i ];
+			Int_vec_pair& next_pair = pairs[ next_i ];
+
+			if ( is_convex_triangle( prev_pair.pos, current_pair.pos, next_pair.pos ) ) {
+				continue;
+			}
+
+			was_cuttable = true;
+			for ( int j = 0; j < pairs.size(); ++j ) {
+				if ( pairs[ j ].idx == prev_pair.idx || pairs[ j ].idx == current_pair.idx || pairs[ j ].idx == next_pair.idx ) {
+					continue;
+				}
+
+				if ( triangle_contains_point( prev_pair.pos, current_pair.pos, next_pair.pos, pairs[ j ].pos ) ) {
+					was_cuttable = false;
+					break;
+				}
+			}
+
+			if ( was_cuttable ) {
+				failsafe_count = 0;
+
+				ret.push_back( ( GLuint )current_pair.idx );
+
+				ret.push_back( ( GLuint )prev_pair.idx );
+				ret.push_back( ( GLuint )next_pair.idx );
+
+				pairs.erase( pairs.begin() + i );
+
+				i = safe_index_vector( pairs, i + 1 );
+			}
+		}
+	}
+
+	ret.push_back( ( GLuint )pairs[ 1 ].idx );
+	ret.push_back( ( GLuint )pairs[ 0 ].idx );
+	ret.push_back( ( GLuint )pairs[ 2 ].idx );
+
+	return ret;
+}
+
+bool triangle_contains_point( const glm::vec2& a, const glm::vec2& b, const glm::vec2& c, const glm::vec2& point ) {
+	// p = l1*a + l2*b + l3*c
+	// 
+	// |	p.x = (l1*a).x + (l2*b).x + (l3*c).x
+	// |	p.x = (l1*a).x + (l2*b).x + (l3*c).x
+	// |	1 = l1 + l2 + l3
+	// 
+	// [ a.x  b.x  c.x ]   [ l1 ]   [ p.x ]
+	// [ a.y  b.y  c.y ] * [ l2 ] = [ p.y ]
+	// [  1    1    1  ]   [ l3 ]   [  1  ]
+	
+	glm::mat3 m(
+		a.x, b.x, c.x,
+		a.y, b.y, c.y,
+		1.f, 1.f, 1.f
+	);
+	glm::vec3 p( point.x, point.y, 1.f );
+
+	glm::vec3 l123 = p * glm::inverse( m );
+	return l123.x > 0 && l123.y > 0 && l123.z > 0;
+}
+
+bool is_convex_triangle( const glm::vec2& prev, const glm::vec2& current, const glm::vec2& next ) {
+	glm::vec2 in_edge = current - prev;
+	glm::vec2 out_edge = next - current;
+
+	return glm::dot( rot_right( in_edge ), out_edge ) > 0;
+}
+
+template <typename T>
+int safe_index_vector( const std::vector< T >& vector, int idx ) {
+	if ( vector.empty() ) {
+		throw std::exception( "Empty vector on safe indexing!" );
+	}
+
+	while ( idx < 0 ) {
+		idx += vector.size();
+	}
+
+	while ( idx >= vector.size() ) {
+		idx -= vector.size();
+	}
+
+	return idx;
+}
+
 #pragma region modifier functions
 constexpr Modifier operator&( Modifier a, Modifier b ){
 	return static_cast<Modifier>( static_cast<unsigned char>( a ) & static_cast<unsigned char>( b ) );

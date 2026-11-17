@@ -120,6 +120,9 @@ Mesh Road::generate_road_mesh( const float& d_t ) {
 	std::vector< Vertex > vertices = {};
 	std::vector< GLuint > indices = {};
 
+	std::vector< glm::vec2 > left_points = {};
+	std::vector< glm::vec2 > counter_clockwise_points = {};
+
 	const float t_max = ( float )segment_count();
 	int debug_i = 0;
 
@@ -130,34 +133,11 @@ Mesh Road::generate_road_mesh( const float& d_t ) {
 		glm::vec2 der1 = sample_bezier_derivative_auto( 1, t );
 		glm::vec2 right = rot_right( glm::normalize( der1 ) );
 
-		float x = 0.f;
-		float used_tmp_left = tmp_left;
-		float used_tmp_right = tmp_right;
-		if ( debug_i % 2 == 0 ) {
-			x = 1.f;
-			right = -right;
-			used_tmp_left = tmp_right;
-			used_tmp_right = tmp_left;
-		}
+		glm::vec2 left_pos = p - s_mult( tmp_left, right );
+		glm::vec2 right_pos = p + s_mult( tmp_right, right );
 
-		Vertex v_left;
-		v_left.normal = glm::vec3( 0.f, 1.f, 0.f );
-		v_left.pos = glm::vec3( p.x - s_mult( used_tmp_left, right ).x, 0.f, p.y - s_mult( used_tmp_left, right ).y );
-		v_left.uv = glm::vec2( x, 0.f );
-
-		indices.push_back( ( GLuint )vertices.size() );
-		vertices.push_back( v_left );
-
-
-		Vertex v_right;
-		v_right.normal = glm::vec3( 0.f, 1.f, 0.f );
-		v_right.pos = glm::vec3( p.x + s_mult( used_tmp_right, right ).x, 0.f, p.y + s_mult( used_tmp_right, right ).y );
-		v_right.uv = glm::vec2( x, 0.f );
-
-		indices.push_back( ( GLuint )vertices.size() );
-		vertices.push_back( v_right );
-		
-		debug_i++;
+		left_points.push_back( left_pos );
+		counter_clockwise_points.push_back( right_pos );
 	}
 
 	{
@@ -165,34 +145,27 @@ Mesh Road::generate_road_mesh( const float& d_t ) {
 		glm::vec2 der1 = sample_bezier_derivative_auto( 1, t_max );
 		glm::vec2 right = rot_right( glm::normalize( der1 ) );
 
-		float x = 0.f;
-		float used_tmp_left = tmp_left;
-		float used_tmp_right = tmp_right;
-		if ( debug_i % 2 == 0 ) {
-			x = 1.f;
-			right = -right;
-			used_tmp_left = tmp_right;
-			used_tmp_right = tmp_left;
-		}
+		glm::vec2 left_pos = p - s_mult( tmp_left, right );
+		glm::vec2 right_pos = p + s_mult( tmp_right, right );
 
-		Vertex v_left;
-		v_left.normal = glm::vec3( 0.f, 1.f, 0.f );
-		v_left.pos = glm::vec3( p.x - s_mult( used_tmp_left, right ).x, 0.f, p.y - s_mult( used_tmp_left, right ).y );
-		v_left.uv = glm::vec2( x, 0.f );
-
-		indices.push_back( ( GLuint )vertices.size() );
-		vertices.push_back( v_left );
-
-
-		Vertex v_right;
-		v_right.normal = glm::vec3( 0.f, 1.f, 0.f );
-		v_right.pos = glm::vec3( p.x + s_mult( used_tmp_right, right ).x, 0.f, p.y + s_mult( used_tmp_right, right ).y );
-		v_right.uv = glm::vec2( x, 0.f );
-
-		indices.push_back( ( GLuint )vertices.size() );
-		vertices.push_back( v_right );
-
+		left_points.push_back( left_pos );
+		counter_clockwise_points.push_back( right_pos );
 	}
+
+	for ( int i = left_points.size() - 1; i >= 0; --i ) {
+		counter_clockwise_points.push_back( left_points[ i ] );
+	}
+
+	for ( glm::vec2 point : counter_clockwise_points ) {
+		Vertex v;
+		v.pos = glm::vec3( point.x, 0.f, point.y );
+		v.normal = glm::vec3( 0.f, 1.f, 0.f );
+		v.uv = glm::vec2( 1.f, 0.f );
+
+		vertices.push_back( v );
+	}
+
+	indices = triangulate_counterclockwise( counter_clockwise_points );
 
 	Mesh ret_mesh;
 	ret_mesh.vertices = vertices;

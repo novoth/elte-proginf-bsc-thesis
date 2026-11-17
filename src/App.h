@@ -98,7 +98,6 @@ protected:
 
 	#pragma region opengl objects
 	OGL_obj marker = {};
-	OGL_obj test = {};
 	OGL_obj ground = {};
 	#pragma endregion
 
